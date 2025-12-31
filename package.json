@@ -1,0 +1,29 @@
+{
+    "name": "portfolio-app",
+    "version": "1.0.0",
+    "description": "Yatırım Portföy Takip Uygulaması",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "NODE_ENV=development node server.js",
+        "prod": "NODE_ENV=production node server.js",
+        "test": "node test-api.js",
+        "test:security": "node test-security.js",
+        "test:performance": "node test-performance.js",
+        "test:integrity": "node test-integrity.js",
+        "test:functional": "node test-functional.js",
+        "test:all": "node run-all-tests.js"
+    },
+    "dependencies": {
+        "compression": "^1.8.1",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^4.18.2",
+        "express-rate-limit": "^8.2.1",
+        "express-validator": "^7.3.1",
+        "helmet": "^8.1.0",
+        "sql.js": "^1.10.3",
+        "swagger-jsdoc": "^6.2.8",
+        "swagger-ui-express": "^5.0.1"
+    }
+}

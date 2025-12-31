@@ -1,0 +1,2552 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yatırım Portföyüm</title>
+
+    <!-- Tailwind CSS ve Dark Mode Ayarı -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#111827',
+                            card: '#1f2937',
+                            border: '#374151'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts: Inter & Poppins -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        h1,
+        h2,
+        h3,
+        .brand-font {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        html.dark ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        html.dark ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Toast Notification Styles */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            pointer-events: auto;
+            min-width: 300px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+            backdrop-filter: blur(10px);
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .toast.warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        .toast.info {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
+        .toast.removing {
+            animation: slideOut 0.3s ease-in forwards;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9998;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+
+<body
+    class="text-gray-800 dark:text-gray-100 antialiased min-h-screen flex flex-col bg-f3f4f6 dark:bg-gray-900 transition-colors duration-300">
+
+    <!-- HEADER SECTION -->
+    <header
+        class="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white pb-24 pt-8 px-4 shadow-lg rounded-b-[2.5rem] relative transition-all">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie opacity-80"></i> Portföyüm
+                </h1>
+            </div>
+
+            <!-- Dark/Light Mode Toggle Button -->
+            <button onclick="toggleTheme()"
+                class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/10 text-white w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg active:scale-95"
+                title="Temayı Değiştir">
+                <!-- Sun Icon (for Dark Mode) -->
+                <i class="fa-solid fa-sun text-yellow-300 text-lg hidden dark:block"></i>
+                <!-- Moon Icon (for Light Mode) -->
+                <i class="fa-solid fa-moon text-white text-lg dark:hidden"></i>
+            </button>
+        </div>
+
+        <!-- Toplam Bakiye Özeti -->
+        <div class="max-w-4xl mx-auto mt-8">
+            <div class="text-blue-100 text-sm opacity-80">Tahmini Toplam Varlık</div>
+            <div id="totalValue" class="text-5xl font-bold mt-2 tracking-tight">₺ 0<span
+                    class="text-2xl opacity-60">,00</span></div>
+
+            <!-- Stats Row -->
+            <div class="flex flex-wrap items-center gap-6 mt-6">
+                <!-- Gerçekleşmemiş Kar (Aktif Portföy) -->
+                <div>
+                    <div class="text-blue-200 text-xs font-medium mb-1 opacity-80">Gerçekleşmemiş K/Z</div>
+                    <div id="totalProfit" class="text-2xl font-bold text-green-300 flex items-center gap-2">
+                        ₺ 0
+                        <span id="totalProfitPercent"
+                            class="text-xs font-normal bg-green-400/20 px-2 py-0.5 rounded text-green-200 border border-green-400/20">%0</span>
+                    </div>
+                </div>
+
+                <div class="hidden sm:block h-10 w-px bg-white/10"></div>
+
+                <!-- Gerçekleşmiş Kar (Satışlardan) -->
+                <div>
+                    <div class="text-blue-200 text-xs font-medium mb-1 opacity-80">Gerçekleşmiş Kar</div>
+                    <div id="realizedProfit" class="text-xl font-bold text-emerald-300 flex items-center gap-2">
+                        <i class="fa-solid fa-check-circle text-sm"></i>
+                        ₺ 0
+                    </div>
+                </div>
+
+                <div class="hidden sm:block h-10 w-px bg-white/10"></div>
+
+                <!-- Toplam Kar -->
+                <div>
+                    <div class="text-blue-200 text-xs font-medium mb-1 opacity-80">Toplam Kar</div>
+                    <div id="totalOverallProfit" class="text-xl font-bold text-yellow-300 flex items-center gap-2">
+                        <i class="fa-solid fa-coins text-sm"></i>
+                        ₺ 0
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-grow -mt-16 px-4 pb-24 max-w-4xl mx-auto w-full z-10">
+
+        <!-- PIE CHART SECTION -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Varlık Dağılımı (Mevcut) -->
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-white brand-font flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-indigo-500"></i>
+                        Varlık Dağılımı
+                    </h2>
+                </div>
+                <div class="flex flex-col items-center gap-4">
+                    <div class="relative" style="max-width: 200px; max-height: 200px;">
+                        <canvas id="portfolioChart"></canvas>
+                        <div id="chartEmptyState"
+                            class="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                            <div class="text-center">
+                                <i class="fa-solid fa-chart-pie text-3xl mb-2 opacity-30"></i>
+                                <p class="text-xs">Varlık ekleyin</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="chartLegend" class="w-full text-sm">
+                        <!-- Dinamik olarak render edilecek -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tür Bazlı Ağırlık -->
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-white brand-font flex items-center gap-2">
+                        <i class="fa-solid fa-weight-scale text-purple-500"></i>
+                        Tür Ağırlıkları
+                    </h2>
+                </div>
+                <div class="flex flex-col items-center gap-4">
+                    <div class="relative" style="max-width: 200px; max-height: 200px;">
+                        <canvas id="typeChart"></canvas>
+                        <div id="typeChartEmptyState"
+                            class="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                            <div class="text-center">
+                                <i class="fa-solid fa-weight-scale text-3xl mb-2 opacity-30"></i>
+                                <p class="text-xs">Varlık ekleyin</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="typeLegend" class="w-full text-sm">
+                        <!-- Dinamik olarak render edilecek -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MINI DASHBOARD -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <!-- En Çok Kazandıran -->
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-4 transition-colors">
+                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    <i class="fa-solid fa-arrow-trend-up text-green-500"></i>
+                    En Çok Kazandıran
+                </div>
+                <div id="topGainer" class="text-lg font-bold text-gray-800 dark:text-white">-</div>
+                <div id="topGainerProfit" class="text-sm text-green-500">₺0 (+0%)</div>
+            </div>
+
+            <!-- En Çok Kaybettiren -->
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-4 transition-colors">
+                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    <i class="fa-solid fa-arrow-trend-down text-red-500"></i>
+                    En Çok Kaybettiren
+                </div>
+                <div id="topLoser" class="text-lg font-bold text-gray-800 dark:text-white">-</div>
+                <div id="topLoserLoss" class="text-sm text-red-500">₺0 (-0%)</div>
+            </div>
+
+            <!-- Döviz Çevirici -->
+            <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-4 text-white">
+                <div class="flex items-center gap-2 text-xs opacity-80 mb-2">
+                    <i class="fa-solid fa-right-left"></i>
+                    Döviz Çevirici
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="converterInput" value="1" step="any" min="0"
+                        class="w-full bg-white/20 border-0 rounded-lg py-2 px-3 text-white placeholder-white/50 focus:ring-2 focus:ring-white/50 text-sm"
+                        onchange="convertCurrency()" oninput="convertCurrency()">
+                    <select id="converterFrom"
+                        class="bg-white/20 border-0 rounded-lg py-2 px-2 text-white text-sm focus:ring-2 focus:ring-white/50"
+                        onchange="convertCurrency()">
+                        <option value="USD">USD</option>
+                        <option value="TRY" selected>TRY</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2 mt-2 text-xs opacity-80">
+                    <i class="fa-solid fa-equals"></i>
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                    <div id="converterResult" class="w-full bg-white/10 rounded-lg py-2 px-3 text-lg font-bold">0.00
+                    </div>
+                    <select id="converterTo"
+                        class="bg-white/20 border-0 rounded-lg py-2 px-2 text-white text-sm focus:ring-2 focus:ring-white/50"
+                        onchange="convertCurrency()">
+                        <option value="USD" selected>USD</option>
+                        <option value="TRY">TRY</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTIONS & FILTER -->
+        <div class="flex justify-between items-center mb-6 px-1">
+            <h2 class="text-xl font-bold text-gray-800 dark:text-white brand-font hidden md:block transition-colors">
+                Varlık Listesi</h2>
+
+            <div class="flex items-center gap-2 ml-auto flex-wrap">
+                <!-- Export Dropdown -->
+                <div class="relative" id="exportDropdown">
+                    <button onclick="toggleExportMenu()"
+                        class="bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 text-purple-600 dark:text-purple-400 px-4 py-3 rounded-xl flex items-center gap-2 transition text-sm font-medium"
+                        title="Verileri Export Et">
+                        <i class="fa-solid fa-download"></i>
+                        <span class="hidden sm:inline">Export</span>
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+                    <div id="exportMenu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                        <div class="py-2">
+                            <button onclick="exportData('assets', 'json')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-file-code text-blue-500"></i>
+                                <span>Varlıklar (JSON)</span>
+                            </button>
+                            <button onclick="exportData('assets', 'csv')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-file-csv text-green-500"></i>
+                                <span>Varlıklar (CSV)</span>
+                            </button>
+                            <button onclick="exportData('transactions', 'json')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-file-code text-blue-500"></i>
+                                <span>İşlemler (JSON)</span>
+                            </button>
+                            <button onclick="exportData('transactions', 'csv')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-file-csv text-green-500"></i>
+                                <span>İşlemler (CSV)</span>
+                            </button>
+                            <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                            <button onclick="exportData('portfolio', 'json')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-briefcase text-purple-500"></i>
+                                <span>Tam Portföy (JSON)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Import Button -->
+                <button onclick="toggleModal('importModal')"
+                    class="bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-4 py-3 rounded-xl flex items-center gap-2 transition text-sm font-medium"
+                    title="Veri Import Et">
+                    <i class="fa-solid fa-upload"></i>
+                    <span class="hidden sm:inline">Import</span>
+                </button>
+
+                <button onclick="refreshPrices()" id="refreshPricesBtn"
+                    class="bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 px-4 py-3 rounded-xl flex items-center gap-2 transition text-sm font-medium"
+                    title="Fiyatları API'lerden Güncelle">
+                    <i class="fa-solid fa-rotate" id="refreshIcon"></i>
+                    <span class="hidden sm:inline">Fiyatları Güncelle</span>
+                </button>
+                <button onclick="confirmClearAll()"
+                    class="bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl flex items-center gap-2 transition text-sm font-medium"
+                    title="Tüm Verileri Temizle">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span class="hidden sm:inline">Temizle</span>
+                </button>
+                <button onclick="toggleModal('addAssetModal')"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl shadow-lg shadow-blue-600/30 flex items-center gap-2 transition transform hover:-translate-y-1 active:scale-95 text-sm font-medium">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Yeni Varlık Ekle</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB NAVIGATION -->
+        <div class="flex gap-2 mb-4 overflow-x-auto">
+            <button onclick="switchTab('portfolio')" id="tabPortfolio"
+                class="tab-btn active px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-blue-600 text-white whitespace-nowrap"></button>
+                <i class="fa-solid fa-wallet"></i>
+                <span>Portföy</span>
+            </button>
+            <button onclick="switchTab('history')" id="tabHistory"
+                class="tab-btn px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 whitespace-nowrap">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span>Geçmiş</span>
+            </button>
+            <button onclick="switchTab('reports')" id="tabReports"
+                class="tab-btn px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 whitespace-nowrap">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Raporlar</span>
+            </button>
+        </div>
+
+        <!-- FILTER BUTTONS -->
+        <div id="filterSection" class="flex flex-wrap gap-2 mb-4">
+            <button onclick="filterByType('all')" id="filterAll"
+                class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition bg-indigo-600 text-white">
+                Tümü
+            </button>
+            <button onclick="filterByType('crypto')" id="filterCrypto"
+                class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">
+                <i class="fa-brands fa-bitcoin mr-1"></i>Kripto
+            </button>
+            <button onclick="filterByType('stock')" id="filterStock"
+                class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">
+                <i class="fa-solid fa-building mr-1"></i>Hisse
+            </button>
+            <button onclick="filterByType('gold')" id="filterGold"
+                class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">
+                <i class="fa-solid fa-coins mr-1"></i>Altın
+            </button>
+            <button onclick="filterByType('currency')" id="filterCurrency"
+                class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">
+                <i class="fa-solid fa-money-bill-wave mr-1"></i>Döviz
+            </button>
+        </div>
+
+        <!-- PORTFOLIO TAB CONTENT -->
+        <div id="portfolioTab">
+            <!-- PORTFOLIO TABLE / LIST -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300"
+                id="portfolioTable">
+
+                <!-- Desktop Table View -->
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr
+                                class="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider border-b border-gray-100 dark:border-gray-700">
+                                <th class="p-4 font-semibold">Varlık Adı</th>
+                                <th class="p-4 font-semibold text-right">Miktar</th>
+                                <th class="p-4 font-semibold text-right">Ort. Alış</th>
+                                <th class="p-4 font-semibold text-right">Güncel Fiyat</th>
+                                <th class="p-4 font-semibold text-right">Kar/Zarar</th>
+                                <th class="p-4 font-semibold text-center w-40">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="desktopTableBody" class="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+                            <!-- Dinamik olarak render edilecek -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile List View (Cards) -->
+                <div id="mobileAssetList" class="md:hidden flex flex-col divide-y divide-gray-100 dark:divide-gray-700">
+                    <!-- Dinamik olarak render edilecek -->
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORY TAB CONTENT -->
+        <div id="historyTab" class="hidden">
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i>
+                        İşlem Geçmişi
+                    </h3>
+                    <span id="historyCount"
+                        class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">0
+                        işlem</span>
+                </div>
+                <div id="historyList"
+                    class="divide-y divide-gray-100 dark:divide-gray-700 max-h-[500px] overflow-y-auto">
+                    <!-- Dinamik olarak render edilecek -->
+                </div>
+            </div>
+        </div>
+
+        <!-- REPORTS TAB CONTENT -->
+        <div id="reportsTab" class="hidden">
+            <!-- Monthly Report -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden mb-6">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                    <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-days text-blue-500"></i>
+                        Aylık Rapor
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="p-3 text-left">Ay</th>
+                                <th class="p-3 text-right">Alım Sayısı</th>
+                                <th class="p-3 text-right">Alım Tutarı</th>
+                                <th class="p-3 text-right">Satış Sayısı</th>
+                                <th class="p-3 text-right">Satış Tutarı</th>
+                                <th class="p-3 text-right">Gerçekleşen K/Z</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthlyReportBody" class="divide-y divide-gray-100 dark:divide-gray-700">
+                            <tr><td colspan="6" class="text-center py-8 text-gray-500">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Performance Report -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden mb-6">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                    <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-green-500"></i>
+                        Performans Raporu
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="p-3 text-left">Varlık</th>
+                                <th class="p-3 text-right">Maliyet</th>
+                                <th class="p-3 text-right">Güncel Değer</th>
+                                <th class="p-3 text-right">Kar/Zarar</th>
+                                <th class="p-3 text-right">K/Z %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="performanceReportBody" class="divide-y divide-gray-100 dark:divide-gray-700">
+                            <tr><td colspan="5" class="text-center py-8 text-gray-500">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Distribution & Risk Analysis -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Distribution -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                        <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-purple-500"></i>
+                            Tür Dağılımı
+                        </h3>
+                    </div>
+                    <div id="distributionReport" class="p-4 space-y-3">
+                        <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
+                    </div>
+                </div>
+
+                <!-- Risk Analysis -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                        <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved text-red-500"></i>
+                            Risk Analizi
+                        </h3>
+                    </div>
+                    <div id="riskAnalysis" class="p-4">
+                        <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Performers -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Top Gainers -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                        <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-arrow-trend-up text-green-500"></i>
+                            En Çok Kazandıranlar
+                        </h3>
+                    </div>
+                    <div id="topGainers" class="p-4 space-y-3">
+                        <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
+                    </div>
+                </div>
+
+                <!-- Top Losers -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                        <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-arrow-trend-down text-red-500"></i>
+                            En Çok Kayb Ettirenler
+                        </h3>
+                    </div>
+                    <div id="topLosers" class="p-4 space-y-3">
+                        <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- BOTTOM TOTAL PROFIT CARD (Sticky Style) -->
+    <div
+        class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 fixed bottom-0 w-full z-20 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] md:static md:bg-transparent md:border-0 md:shadow-none md:mt-4 md:mb-8 md:p-0 transition-colors duration-300">
+        <div class="max-w-4xl mx-auto">
+            <!-- Mobile View Bottom Bar -->
+            <div class="flex justify-between items-center md:hidden">
+                <div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Toplam K/Z</div>
+                    <div id="bottomTotalProfit" class="text-xl font-bold text-green-600 dark:text-green-400">₺ 0</div>
+                </div>
+                <button
+                    class="bg-gray-900 dark:bg-white dark:text-gray-900 text-white p-3 rounded-full shadow-lg transition-colors"
+                    onclick="toggleModal('addAssetModal')">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+
+            <!-- Desktop View Total Card -->
+            <div class="hidden md:flex justify-end">
+                <div
+                    class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-green-100 dark:border-green-900/30 flex items-center gap-6 pr-10 transition-colors">
+                    <div
+                        class="bg-green-50 dark:bg-green-900/20 p-4 rounded-full text-green-600 dark:text-green-400 text-2xl">
+                        <i class="fa-solid fa-sack-dollar"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400 font-medium">Toplam Realize Edilmemiş
+                            Kar/Zarar</div>
+                        <div id="desktopTotalProfit"
+                            class="text-3xl font-bold text-green-600 dark:text-green-400 tracking-tight mt-1">₺ 0,00
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD ASSET MODAL -->
+    <div id="addAssetModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true">
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop"
+            onclick="toggleModal('addAssetModal')"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div
+                    class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95 modal-panel">
+                    <form onsubmit="handleAddAsset(event)">
+                        <div
+                            class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 flex justify-between items-center border-b border-gray-100 dark:border-gray-700">
+                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Yeni Varlık Ekle
+                            </h3>
+                            <button type="button" onclick="toggleModal('addAssetModal')"
+                                class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition">
+                                <i class="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+                        <div class="px-4 py-5 sm:p-6 space-y-4">
+                            <!-- Hazır Varlık Seçimi -->
+                            <div>
+                                <label
+                                    class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">
+                                    <i class="fa-solid fa-list-check mr-1 text-indigo-500"></i>
+                                    Hazır Varlık Seç
+                                </label>
+                                <select id="presetAssetSelect" onchange="fillAssetFromPreset()"
+                                    class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 bg-gray-50 dark:bg-gray-700">
+                                    <option value="">-- Seçin veya manuel girin --</option>
+                                    <optgroup label="🪙 Kripto Paralar">
+                                        <option value="crypto|Bitcoin|BTC">Bitcoin (BTC)</option>
+                                        <option value="crypto|Ethereum|ETH">Ethereum (ETH)</option>
+                                        <option value="crypto|Binance Coin|BNB">Binance Coin (BNB)</option>
+                                        <option value="crypto|Solana|SOL">Solana (SOL)</option>
+                                        <option value="crypto|XRP|XRP">XRP (XRP)</option>
+                                        <option value="crypto|Cardano|ADA">Cardano (ADA)</option>
+                                        <option value="crypto|Dogecoin|DOGE">Dogecoin (DOGE)</option>
+                                        <option value="crypto|Polkadot|DOT">Polkadot (DOT)</option>
+                                        <option value="crypto|Avalanche|AVAX">Avalanche (AVAX)</option>
+                                        <option value="crypto|Chainlink|LINK">Chainlink (LINK)</option>
+                                        <option value="crypto|Litecoin|LTC">Litecoin (LTC)</option>
+                                        <option value="crypto|Polygon|MATIC">Polygon (MATIC)</option>
+                                        <option value="crypto|Uniswap|UNI">Uniswap (UNI)</option>
+                                        <option value="crypto|Shiba Inu|SHIB">Shiba Inu (SHIB)</option>
+                                    </optgroup>
+                                    <optgroup label="🏢 US Hisse Senetleri">
+                                        <option value="stock|Apple|AAPL">Apple (AAPL)</option>
+                                        <option value="stock|Tesla|TSLA">Tesla (TSLA)</option>
+                                        <option value="stock|Microsoft|MSFT">Microsoft (MSFT)</option>
+                                        <option value="stock|Google|GOOGL">Google (GOOGL)</option>
+                                        <option value="stock|Amazon|AMZN">Amazon (AMZN)</option>
+                                        <option value="stock|Meta|META">Meta (META)</option>
+                                        <option value="stock|NVIDIA|NVDA">NVIDIA (NVDA)</option>
+                                        <option value="stock|Netflix|NFLX">Netflix (NFLX)</option>
+                                        <option value="stock|AMD|AMD">AMD (AMD)</option>
+                                        <option value="stock|Intel|INTC">Intel (INTC)</option>
+                                    </optgroup>
+                                    <optgroup label="💵 Döviz">
+                                        <option value="currency|Amerikan Doları|USD">Amerikan Doları (USD)</option>
+                                        <option value="currency|Euro|EUR">Euro (EUR)</option>
+                                        <option value="currency|İngiliz Sterlini|GBP">İngiliz Sterlini (GBP)</option>
+                                    </optgroup>
+                                    <optgroup label="💰 Değerli Metaller">
+                                        <option value="gold|Gram Altın|GOLD">Gram Altın</option>
+                                        <option value="gold|Çeyrek Altın|CEYREK">Çeyrek Altın</option>
+                                        <option value="gold|Yarım Altın|YARIM">Yarım Altın</option>
+                                        <option value="gold|Tam Altın|TAM">Tam Altın</option>
+                                    </optgroup>
+                                </select>
+                                <p class="text-xs text-gray-400 mt-1">Listeden seçim yapın veya aşağıdan manuel girin
+                                </p>
+                            </div>
+
+                            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                    <i class="fa-solid fa-pen mr-1"></i> Varlık Detayları
+                                </p>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Varlık
+                                    Türü</label>
+                                <select name="type" id="addAssetType" required
+                                    class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 bg-gray-50 dark:bg-gray-700">
+                                    <option value="Kripto Para">Kripto Para</option>
+                                    <option value="Hisse Senedi">Hisse Senedi</option>
+                                    <option value="Altın">Altın</option>
+                                    <option value="Döviz">Döviz</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Varlık
+                                        Adı</label>
+                                    <input type="text" name="name" id="addAssetName" placeholder="Bitcoin" required
+                                        class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Sembol</label>
+                                    <input type="text" name="symbol" id="addAssetSymbol" placeholder="BTC" required
+                                        class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Miktar</label>
+                                    <input type="number" name="quantity" placeholder="0.00" step="any" required
+                                        class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Alış
+                                        Fiyatı</label>
+                                    <input type="number" name="avg_cost" placeholder="0.00" step="any" required
+                                        class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                </div>
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Para
+                                    Birimi</label>
+                                <select name="currency"
+                                    class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 bg-gray-50 dark:bg-gray-700">
+                                    <option value="TRY">TRY (₺)</option>
+                                    <option value="USD">USD ($)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
+                            <button type="submit"
+                                class="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto transition">Ekle</button>
+                            <button type="button"
+                                class="mt-3 inline-flex w-full justify-center rounded-lg bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto transition"
+                                onclick="toggleModal('addAssetModal')">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SELL ASSET MODAL -->
+    <div id="sellAssetModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true">
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop"
+            onclick="toggleModal('sellAssetModal')"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div
+                    class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95 modal-panel">
+                    <form onsubmit="handleSellAsset(event)">
+                        <div
+                            class="bg-orange-50 dark:bg-orange-900/20 px-4 py-3 sm:px-6 flex justify-between items-center border-b border-orange-100 dark:border-orange-900/30">
+                            <div>
+                                <h3 class="text-base font-semibold leading-6 text-orange-900 dark:text-orange-100">
+                                    Varlık Satışı</h3>
+                                <p id="sellAssetName" class="text-sm text-orange-600 dark:text-orange-300"></p>
+                            </div>
+                            <button type="button" onclick="toggleModal('sellAssetModal')"
+                                class="text-orange-400 hover:text-orange-500 transition">
+                                <i class="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+                        <div class="px-4 py-5 sm:p-6 space-y-4">
+                            <p id="sellMaxQuantity" class="text-sm text-gray-500 dark:text-gray-400"></p>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Satılacak
+                                        Miktar</label>
+                                    <input type="number" name="quantity" placeholder="0.00" step="any" required
+                                        class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Satış
+                                        Fiyatı</label>
+                                    <input type="number" name="price" placeholder="0.00" step="any" required
+                                        class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
+                            <button type="submit"
+                                class="inline-flex w-full justify-center rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 sm:ml-3 sm:w-auto transition">Satışı
+                                Onayla</button>
+                            <button type="button"
+                                class="mt-3 inline-flex w-full justify-center rounded-lg bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto transition"
+                                onclick="toggleModal('sellAssetModal')">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BUY ASSET MODAL (Mevcut varlığa alım ekleme) -->
+    <div id="buyAssetModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true">
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop"
+            onclick="toggleModal('buyAssetModal')"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div
+                    class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95 modal-panel">
+                    <form onsubmit="handleBuyAsset(event)">
+                        <div
+                            class="bg-blue-50 dark:bg-blue-900/20 px-4 py-3 sm:px-6 flex justify-between items-center border-b border-blue-100 dark:border-blue-900/30">
+                            <div>
+                                <h3 class="text-base font-semibold leading-6 text-blue-900 dark:text-blue-100">Alım Ekle
+                                </h3>
+                                <p id="buyAssetName" class="text-sm text-blue-600 dark:text-blue-300"></p>
+                            </div>
+                            <button type="button" onclick="toggleModal('buyAssetModal')"
+                                class="text-blue-400 hover:text-blue-500 transition">
+                                <i class="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+                        <div class="px-4 py-5 sm:p-6 space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Eklenecek
+                                        Miktar</label>
+                                    <input type="number" name="quantity" placeholder="0.00" step="any" required
+                                        class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Alış
+                                        Fiyatı</label>
+                                    <input type="number" name="price" placeholder="0.00" step="any" required
+                                        class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
+                            <button type="submit"
+                                class="inline-flex w-full justify-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto transition">Alım
+                                Ekle</button>
+                            <button type="button"
+                                class="mt-3 inline-flex w-full justify-center rounded-lg bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto transition"
+                                onclick="toggleModal('buyAssetModal')">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT ASSET MODAL -->
+    <div id="editAssetModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true">
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop"
+            onclick="toggleModal('editAssetModal')"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div
+                    class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95 modal-panel">
+                    <form onsubmit="handleEditAsset(event)">
+                        <div
+                            class="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3 sm:px-6 flex justify-between items-center border-b border-emerald-100 dark:border-emerald-900/30">
+                            <div>
+                                <h3 class="text-base font-semibold leading-6 text-emerald-900 dark:text-emerald-100">
+                                    <i class="fa-solid fa-pen-to-square mr-2"></i>Varlık Düzenle
+                                </h3>
+                                <p id="editAssetName" class="text-sm text-emerald-600 dark:text-emerald-300"></p>
+                            </div>
+                            <button type="button" onclick="toggleModal('editAssetModal')"
+                                class="text-emerald-400 hover:text-emerald-500 transition">
+                                <i class="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+                        <div class="px-4 py-5 sm:p-6 space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Miktar</label>
+                                    <input type="number" name="quantity" id="editQuantity" placeholder="0.00" step="any"
+                                        required
+                                        class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Ort.
+                                        Alış Fiyatı</label>
+                                    <input type="number" name="avg_cost" id="editAvgCost" placeholder="0.00" step="any"
+                                        required
+                                        class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                </div>
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-sm font-medium leading-6 text-gray-900 dark:text-gray-300 mb-1">Güncel
+                                    Fiyat</label>
+                                <input type="number" name="current_price" id="editCurrentPrice" placeholder="0.00"
+                                    step="any" required
+                                    class="block w-full rounded-lg border-0 py-2.5 px-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6 dark:bg-gray-700">
+                                <p class="text-xs text-gray-400 mt-1">Güncel fiyatı güncelleyerek kar/zarar hesabını
+                                    değiştirebilirsiniz.</p>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
+                            <button type="submit"
+                                class="inline-flex w-full justify-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 sm:ml-3 sm:w-auto transition">
+                                <i class="fa-solid fa-check mr-2"></i>Güncelle
+                            </button>
+                            <button type="button"
+                                class="mt-3 inline-flex w-full justify-center rounded-lg bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto transition"
+                                onclick="toggleModal('editAssetModal')">İptal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMPORT MODAL -->
+    <div id="importModal" class="fixed inset-0 z-50 hidden" aria-labelledby="import-modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop"
+            onclick="toggleModal('importModal')"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95 modal-panel">
+                    <div class="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white flex items-center gap-2">
+                                <i class="fa-solid fa-upload text-indigo-500"></i>
+                                Varlık Import Et
+                            </h3>
+                            <button type="button" onclick="toggleModal('importModal')"
+                                class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition">
+                                <i class="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <!-- Format Selection -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Format
+                                </label>
+                                <select id="importFormat"
+                                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                                    <option value="json">JSON</option>
+                                    <option value="csv">CSV</option>
+                                </select>
+                            </div>
+
+                            <!-- File Input -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Dosya Seç
+                                </label>
+                                <input type="file" id="importFile" accept=".json,.csv"
+                                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-400">
+                            </div>
+
+                            <!-- Info -->
+                            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                                <p class="text-sm text-blue-800 dark:text-blue-300">
+                                    <i class="fa-solid fa-info-circle mr-1"></i>
+                                    JSON veya CSV formatında varlık listesi yükleyebilirsiniz. Duplicate varlıklar otomatik olarak atlanır.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
+                        <button type="button" onclick="importAssets()"
+                            class="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:w-auto transition">
+                            <i class="fa-solid fa-upload mr-2"></i>
+                            Import Et
+                        </button>
+                        <button type="button"
+                            class="mt-3 inline-flex w-full justify-center rounded-lg bg-white dark:bg-gray-600 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-500 hover:bg-gray-50 dark:hover:bg-gray-500 sm:mt-0 sm:w-auto transition"
+                            onclick="toggleModal('importModal')">İptal</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // =====================
+        // GLOBAL STATE
+        // =====================
+        let assets = [];
+        let transactions = [];
+        let selectedAssetId = null;
+        let portfolioChart = null;
+        let typeChart = null;
+        let currentTab = 'portfolio';
+        const API_BASE = '/api';
+
+        // =====================
+        // TOAST NOTIFICATION SYSTEM
+        // =====================
+        function showToast(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = {
+                success: 'fa-circle-check',
+                error: 'fa-circle-xmark',
+                warning: 'fa-triangle-exclamation',
+                info: 'fa-circle-info'
+            };
+
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type]} text-xl"></i>
+                <span class="flex-1">${message}</span>
+                <button onclick="this.parentElement.remove()" class="opacity-70 hover:opacity-100 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto remove
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // =====================
+        // LOADING OVERLAY
+        // =====================
+        function showLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.classList.add('hidden');
+        }
+
+        // =====================
+        // INPUT VALIDATION
+        // =====================
+        function validatePositiveNumber(value, fieldName = 'Değer') {
+            const num = parseFloat(value);
+            if (isNaN(num)) {
+                showToast(`${fieldName} geçerli bir sayı olmalıdır`, 'error');
+                return false;
+            }
+            if (num < 0) {
+                showToast(`${fieldName} negatif olamaz`, 'error');
+                return false;
+            }
+            if (num === 0) {
+                showToast(`${fieldName} sıfırdan büyük olmalıdır`, 'warning');
+                return false;
+            }
+            return true;
+        }
+
+        // Pasta grafik renkleri
+        const chartColors = [
+            '#6366f1', // indigo
+            '#f59e0b', // amber
+            '#10b981', // emerald
+            '#ef4444', // red
+            '#8b5cf6', // violet
+            '#06b6d4', // cyan
+            '#f97316', // orange
+            '#ec4899', // pink
+            '#84cc16', // lime
+            '#64748b'  // slate
+        ];
+
+        // Tür bazlı renkler
+        const typeColors = {
+            crypto: { color: '#f59e0b', label: 'Kripto Para', icon: 'fa-brands fa-bitcoin' },
+            stock: { color: '#6366f1', label: 'Hisse Senedi', icon: 'fa-solid fa-building' },
+            gold: { color: '#eab308', label: 'Altın', icon: 'fa-solid fa-coins' },
+            currency: { color: '#10b981', label: 'Döviz', icon: 'fa-solid fa-money-bill-wave' }
+        };
+
+        let currentFilter = 'all';
+
+        // =====================
+        // TAB KONTROLÜ
+        // =====================
+        function switchTab(tab) {
+            currentTab = tab;
+            const portfolioTab = document.getElementById('portfolioTab');
+            const historyTab = document.getElementById('historyTab');
+            const reportsTab = document.getElementById('reportsTab');
+            const tabPortfolio = document.getElementById('tabPortfolio');
+            const tabHistory = document.getElementById('tabHistory');
+            const tabReports = document.getElementById('tabReports');
+            const filterSection = document.getElementById('filterSection');
+
+            // Hide all tabs
+            portfolioTab.classList.add('hidden');
+            historyTab.classList.add('hidden');
+            if (reportsTab) reportsTab.classList.add('hidden');
+
+            // Reset all tab buttons
+            const inactiveClass = 'tab-btn px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 whitespace-nowrap';
+            const activeClass = 'tab-btn px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-blue-600 text-white whitespace-nowrap';
+
+            tabPortfolio.className = inactiveClass;
+            tabHistory.className = inactiveClass;
+            if (tabReports) tabReports.className = inactiveClass;
+
+            if (tab === 'portfolio') {
+                portfolioTab.classList.remove('hidden');
+                filterSection.classList.remove('hidden');
+                tabPortfolio.className = activeClass;
+            } else if (tab === 'history') {
+                historyTab.classList.remove('hidden');
+                filterSection.classList.add('hidden');
+                tabHistory.className = activeClass;
+                fetchTransactions();
+            } else if (tab === 'reports') {
+                if (reportsTab) reportsTab.classList.remove('hidden');
+                filterSection.classList.add('hidden');
+                if (tabReports) tabReports.className = activeClass;
+                loadReports();
+            }
+        }
+
+        function filterByType(type) {
+            currentFilter = type;
+
+            // Update filter button styles
+            const filters = ['All', 'Crypto', 'Stock', 'Gold', 'Currency'];
+            const filterMap = { all: 'All', crypto: 'Crypto', stock: 'Stock', gold: 'Gold', currency: 'Currency' };
+
+            filters.forEach(f => {
+                const btn = document.getElementById('filter' + f);
+                if (btn) {
+                    if (filterMap[type] === f) {
+                        btn.className = 'filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition bg-indigo-600 text-white';
+                    } else {
+                        btn.className = 'filter-btn px-3 py-1.5 rounded-lg text-xs font-medium transition bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600';
+                    }
+                }
+            });
+
+            renderAssets();
+        }
+
+        function getFilteredAssets() {
+            if (currentFilter === 'all') return assets;
+            return assets.filter(a => a.type === currentFilter);
+        }
+
+        // =====================
+        // HAZIR VARLIK SEÇİMİ
+        // =====================
+        function fillAssetFromPreset() {
+            const select = document.getElementById('presetAssetSelect');
+            if (!select || !select.value) return;
+
+            const [type, name, symbol] = select.value.split('|');
+
+            // Tür mapping
+            const typeMap = {
+                'crypto': 'Kripto Para',
+                'stock': 'Hisse Senedi',
+                'gold': 'Altın',
+                'currency': 'Döviz'
+            };
+
+            document.getElementById('addAssetType').value = typeMap[type] || 'Kripto Para';
+            document.getElementById('addAssetName').value = name;
+            document.getElementById('addAssetSymbol').value = symbol;
+        }
+
+        // =====================
+        // DÖVİZ ÇEVİRİCİ
+        // =====================
+        const exchangeRates = {
+            USD: { TRY: 35.20, EUR: 0.92 },
+            TRY: { USD: 0.0284, EUR: 0.0261 },
+            EUR: { TRY: 38.26, USD: 1.09 }
+        };
+
+        function convertCurrency() {
+            const input = document.getElementById('converterInput');
+            const fromSelect = document.getElementById('converterFrom');
+            const toSelect = document.getElementById('converterTo');
+            const result = document.getElementById('converterResult');
+
+            if (!input || !fromSelect || !toSelect || !result) return;
+
+            const amount = parseFloat(input.value) || 0;
+            const from = fromSelect.value;
+            const to = toSelect.value;
+
+            if (from === to) {
+                result.textContent = amount.toFixed(2);
+                return;
+            }
+
+            const rate = exchangeRates[from]?.[to] || 1;
+            const converted = amount * rate;
+            result.textContent = converted.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // =====================
+        // MINI DASHBOARD
+        // =====================
+        function updateMiniDashboard() {
+            const topGainerEl = document.getElementById('topGainer');
+            const topGainerProfitEl = document.getElementById('topGainerProfit');
+            const topLoserEl = document.getElementById('topLoser');
+            const topLoserLossEl = document.getElementById('topLoserLoss');
+
+            if (!topGainerEl || !topLoserEl) return;
+
+            if (assets.length === 0) {
+                topGainerEl.textContent = '-';
+                topGainerProfitEl.textContent = '₺0 (+0%)';
+                topLoserEl.textContent = '-';
+                topLoserLossEl.textContent = '₺0 (-0%)';
+                return;
+            }
+
+            // En çok kazandıran
+            const sortedByProfit = [...assets].sort((a, b) => (b.profit_loss || 0) - (a.profit_loss || 0));
+            const gainer = sortedByProfit[0];
+            const loser = sortedByProfit[sortedByProfit.length - 1];
+
+            if (gainer && gainer.profit_loss > 0) {
+                topGainerEl.textContent = gainer.name;
+                const percent = gainer.profit_loss_percent || 0;
+                topGainerProfitEl.textContent = `${formatCurrency(gainer.profit_loss, gainer.currency)} (+${Math.abs(percent).toFixed(1)}%)`;
+            } else {
+                topGainerEl.textContent = '-';
+                topGainerProfitEl.textContent = 'Kar yok';
+            }
+
+            if (loser && loser.profit_loss < 0) {
+                topLoserEl.textContent = loser.name;
+                const percent = loser.profit_loss_percent || 0;
+                topLoserLossEl.textContent = `${formatCurrency(Math.abs(loser.profit_loss), loser.currency)} (${percent.toFixed(1)}%)`;
+            } else {
+                topLoserEl.textContent = '-';
+                topLoserLossEl.textContent = 'Zarar yok';
+            }
+        }
+
+        // =====================
+        // API FONKSİYONLARI
+        // =====================
+        async function fetchAssets() {
+            try {
+                const response = await fetch(`${API_BASE}/assets`);
+                if (!response.ok) throw new Error('Varlıklar yüklenemedi');
+                assets = await response.json();
+                renderAssets();
+                renderPieChart();
+                renderTypeChart();
+                updateSummary();
+                updateMiniDashboard();
+                convertCurrency();
+            } catch (error) {
+                console.error('Varlıklar yüklenemedi:', error);
+                showToast('Varlıklar yüklenirken hata oluştu', 'error');
+            }
+        }
+
+        async function fetchTransactions() {
+            try {
+                const response = await fetch(`${API_BASE}/transactions`);
+                if (!response.ok) throw new Error('İşlem geçmişi yüklenemedi');
+                transactions = await response.json();
+                renderHistory();
+            } catch (error) {
+                console.error('İşlem geçmişi yüklenemedi:', error);
+                showToast('İşlem geçmişi yüklenirken hata oluştu', 'error');
+            }
+        }
+
+        function renderHistory() {
+            const historyList = document.getElementById('historyList');
+            const historyCount = document.getElementById('historyCount');
+
+            if (!historyList) return;
+
+            if (historyCount) {
+                historyCount.textContent = `${transactions.length} işlem`;
+            }
+
+            if (transactions.length === 0) {
+                historyList.innerHTML = `
+                    <div class="p-8 text-center text-gray-500 dark:text-gray-400">
+                        <i class="fa-solid fa-clock-rotate-left text-4xl mb-4 block opacity-50"></i>
+                        <p>Henüz işlem geçmişi yok</p>
+                    </div>
+                `;
+                return;
+            }
+
+            historyList.innerHTML = transactions.map(tx => {
+                const isBuy = tx.type === 'buy';
+                const typeIcon = isBuy ? 'fa-arrow-down' : 'fa-arrow-up';
+                const typeColor = isBuy ? 'text-green-500 bg-green-100 dark:bg-green-900/30' : 'text-red-500 bg-red-100 dark:bg-red-900/30';
+                const typeText = isBuy ? 'Alım' : 'Satış';
+                const date = new Date(tx.date).toLocaleString('tr-TR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                return `
+                    <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full ${typeColor} flex items-center justify-center">
+                                    <i class="fa-solid ${typeIcon}"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-800 dark:text-gray-200">${tx.asset_name || 'Bilinmeyen'}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">${tx.asset_symbol || ''} • ${typeText}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-semibold ${isBuy ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
+                                    ${isBuy ? '+' : '-'}${tx.quantity}
+                                </div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">@ ${formatCurrency(tx.price, 'TRY')}</div>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex items-center justify-between text-xs">
+                            <span class="text-gray-400 dark:text-gray-500">
+                                <i class="fa-regular fa-clock mr-1"></i>${date}
+                            </span>
+                            <span class="font-medium text-gray-600 dark:text-gray-300">
+                                Toplam: ${formatCurrency(tx.total, 'TRY')}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function fetchSummary() {
+            try {
+                const response = await fetch(`${API_BASE}/summary`);
+                return await response.json();
+            } catch (error) {
+                console.error('Özet yüklenemedi:', error);
+                return null;
+            }
+        }
+
+        async function createAsset(data) {
+            try {
+                showLoading();
+                const response = await fetch(`${API_BASE}/assets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    await fetchAssets();
+                    showToast(`${data.name} başarıyla eklendi`, 'success');
+                    return true;
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Varlık eklenemedi', 'error');
+                }
+            } catch (error) {
+                console.error('Varlık eklenemedi:', error);
+                showToast('Sunucu bağlantı hatası', 'error');
+            } finally {
+                hideLoading();
+            }
+            return false;
+        }
+
+        async function deleteAsset(id) {
+            try {
+                showLoading();
+                const asset = assets.find(a => a.id === id);
+                const response = await fetch(`${API_BASE}/assets/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    await fetchAssets();
+                    showToast(`${asset?.name || 'Varlık'} silindi`, 'success');
+                    return true;
+                } else {
+                    showToast('Varlık silinemedi', 'error');
+                }
+            } catch (error) {
+                console.error('Varlık silinemedi:', error);
+                showToast('Sunucu bağlantı hatası', 'error');
+            } finally {
+                hideLoading();
+            }
+            return false;
+        }
+
+        async function buyAsset(id, quantity, price) {
+            if (!validatePositiveNumber(quantity, 'Miktar')) return false;
+            if (!validatePositiveNumber(price, 'Fiyat')) return false;
+
+            try {
+                showLoading();
+                const asset = assets.find(a => a.id === id);
+                const response = await fetch(`${API_BASE}/assets/${id}/buy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity, price })
+                });
+                
+                if (response.ok) {
+                    await fetchAssets();
+                    showToast(`${asset?.name || 'Varlık'} için alım eklendi`, 'success');
+                    return true;
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Alım eklenemedi', 'error');
+                }
+            } catch (error) {
+                console.error('Alım eklenemedi:', error);
+                showToast('Sunucu bağlantı hatası', 'error');
+            } finally {
+                hideLoading();
+            }
+            return false;
+        }
+
+        async function sellAsset(id, quantity, price) {
+            if (!validatePositiveNumber(quantity, 'Miktar')) return false;
+            if (!validatePositiveNumber(price, 'Fiyat')) return false;
+
+            const asset = assets.find(a => a.id === id);
+            if (asset && quantity > asset.quantity) {
+                showToast(`Yetersiz miktar! Mevcut: ${asset.quantity}`, 'error');
+                return false;
+            }
+
+            try {
+                showLoading();
+                const response = await fetch(`${API_BASE}/assets/${id}/sell`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity, price })
+                });
+                
+                if (response.ok) {
+                    await fetchAssets();
+                    showToast(`${asset?.name || 'Varlık'} satışı tamamlandı`, 'success');
+                    return true;
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Satış işlemi başarısız', 'error');
+                }
+            } catch (error) {
+                console.error('Satış işlemi başarısız:', error);
+                showToast('Sunucu bağlantı hatası', 'error');
+            } finally {
+                hideLoading();
+            }
+            return false;
+        }
+
+        async function updateAsset(id, data) {
+            try {
+                showLoading();
+                const asset = assets.find(a => a.id === id);
+                const response = await fetch(`${API_BASE}/assets/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    await fetchAssets();
+                    showToast(`${asset?.name || 'Varlık'} güncellendi`, 'success');
+                    return true;
+                } else {
+                    showToast('Varlık güncellenemedi', 'error');
+                }
+            } catch (error) {
+                console.error('Varlık güncellenemedi:', error);
+                showToast('Sunucu bağlantı hatası', 'error');
+            } finally {
+                hideLoading();
+            }
+            return false;
+        }
+
+        async function refreshPrices() {
+            const btn = document.getElementById('refreshPricesBtn');
+            const icon = document.getElementById('refreshIcon');
+
+            // Butonu disable et ve animasyon başlat
+            if (btn) btn.disabled = true;
+            if (icon) icon.classList.add('animate-spin');
+
+            showToast('Fiyatlar güncelleniyor...', 'info', 2000);
+
+            try {
+                const response = await fetch(`${API_BASE}/prices/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Varlıkları yeniden yükle
+                    await fetchAssets();
+
+                    // Sonuç mesajı göster
+                    showToast(`${result.updated} varlık güncellendi`, 'success');
+                    if (result.skipped > 0) {
+                        showToast(`${result.skipped} varlık atlandı`, 'warning', 4000);
+                    }
+                } else {
+                    showToast(result.error || 'Fiyat güncellemesi başarısız', 'error');
+                }
+            } catch (error) {
+                console.error('Fiyat güncelleme hatası:', error);
+                showToast('Sunucu bağlantı hatası', 'error');
+            } finally {
+                // Butonu tekrar aktif et
+                if (btn) btn.disabled = false;
+                if (icon) icon.classList.remove('animate-spin');
+            }
+        }
+
+        // =====================
+        // RENDER FONKSİYONLARI
+        // =====================
+
+        // Pasta Grafik Render
+        function renderPieChart() {
+            const ctx = document.getElementById('portfolioChart');
+            const emptyState = document.getElementById('chartEmptyState');
+            const legendContainer = document.getElementById('chartLegend');
+
+            if (!ctx) return;
+
+            // Varlık yoksa boş state göster
+            if (assets.length === 0) {
+                if (emptyState) emptyState.style.display = 'flex';
+                if (legendContainer) legendContainer.innerHTML = '';
+                if (portfolioChart) {
+                    portfolioChart.destroy();
+                    portfolioChart = null;
+                }
+                return;
+            }
+
+            // Boş state'i gizle
+            if (emptyState) emptyState.style.display = 'none';
+
+            // Veri hazırla
+            const labels = assets.map(a => a.name);
+            const values = assets.map(a => a.quantity * a.current_price);
+            const total = values.reduce((sum, v) => sum + v, 0);
+            const percentages = values.map(v => total > 0 ? ((v / total) * 100).toFixed(1) : 0);
+            const colors = assets.map((_, i) => chartColors[i % chartColors.length]);
+
+            // Önceki grafiği temizle
+            if (portfolioChart) {
+                portfolioChart.destroy();
+            }
+
+            // Dark mode kontrolü
+            const isDark = document.documentElement.classList.contains('dark');
+
+            // Yeni grafik oluştur
+            portfolioChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: isDark ? '#1f2937' : '#ffffff',
+                        borderWidth: 3,
+                        hoverBorderWidth: 0,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: isDark ? '#374151' : '#1f2937',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function (context) {
+                                    const value = context.raw;
+                                    const percent = percentages[context.dataIndex];
+                                    return ` ${formatCurrency(value, 'TRY')} (${percent}%)`;
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        animateRotate: true,
+                        animateScale: true
+                    }
+                }
+            });
+
+            // Custom legend render
+            if (legendContainer) {
+                legendContainer.innerHTML = `
+                    <div class="space-y-3">
+                        ${assets.map((asset, i) => {
+                    const value = values[i];
+                    const percent = percentages[i];
+                    const color = colors[i];
+                    return `
+                                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-3 h-3 rounded-full" style="background-color: ${color}"></div>
+                                        <div>
+                                            <div class="font-medium text-gray-800 dark:text-gray-200 text-sm">${asset.name}</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">${asset.symbol}</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="font-semibold text-gray-800 dark:text-gray-200 text-sm">${formatCurrency(value, asset.currency)}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">${percent}%</div>
+                                    </div>
+                                </div>
+                            `;
+                }).join('')}
+                    </div>
+                `;
+            }
+        }
+
+        // Tür Ağırlık Grafiği Render
+        function renderTypeChart() {
+            const ctx = document.getElementById('typeChart');
+            const emptyState = document.getElementById('typeChartEmptyState');
+            const legendContainer = document.getElementById('typeLegend');
+
+            if (!ctx) return;
+
+            // Varlık yoksa boş state göster
+            if (assets.length === 0) {
+                if (emptyState) emptyState.style.display = 'flex';
+                if (legendContainer) legendContainer.innerHTML = '';
+                if (typeChart) {
+                    typeChart.destroy();
+                    typeChart = null;
+                }
+                return;
+            }
+
+            // Boş state'i gizle
+            if (emptyState) emptyState.style.display = 'none';
+
+            // Türe göre grupla
+            const typeData = {};
+            let totalValue = 0;
+
+            assets.forEach(asset => {
+                const value = asset.quantity * asset.current_price;
+                totalValue += value;
+                if (!typeData[asset.type]) {
+                    typeData[asset.type] = 0;
+                }
+                typeData[asset.type] += value;
+            });
+
+            const types = Object.keys(typeData);
+            const values = types.map(t => typeData[t]);
+            const percentages = values.map(v => totalValue > 0 ? ((v / totalValue) * 100).toFixed(1) : 0);
+            const colors = types.map(t => typeColors[t]?.color || '#64748b');
+            const labels = types.map(t => typeColors[t]?.label || t);
+
+            // Önceki grafiği temizle
+            if (typeChart) {
+                typeChart.destroy();
+            }
+
+            const isDark = document.documentElement.classList.contains('dark');
+
+            // Yeni grafik oluştur
+            typeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: isDark ? '#1f2937' : '#ffffff',
+                        borderWidth: 3,
+                        hoverBorderWidth: 0,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '65%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: isDark ? '#374151' : '#1f2937',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function (context) {
+                                    const value = context.raw;
+                                    const percent = percentages[context.dataIndex];
+                                    return ` ${formatCurrency(value, 'TRY')} (${percent}%)`;
+                                }
+                            }
+                        }
+                    },
+                    animation: { animateRotate: true, animateScale: true }
+                }
+            });
+
+            // Custom legend
+            if (legendContainer) {
+                legendContainer.innerHTML = `
+                    <div class="grid grid-cols-2 gap-2">
+                        ${types.map((type, i) => {
+                    const config = typeColors[type] || { label: type, icon: 'fa-solid fa-circle', color: '#64748b' };
+                    return `
+                                <div class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background-color: ${config.color}20">
+                                        <i class="${config.icon} text-sm" style="color: ${config.color}"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-gray-800 dark:text-gray-200 text-xs">${config.label}</div>
+                                        <div class="text-xs font-bold" style="color: ${config.color}">${percentages[i]}%</div>
+                                    </div>
+                                </div>
+                            `;
+                }).join('')}
+                    </div>
+                `;
+            }
+        }
+
+        function formatCurrency(value, currency = 'TRY') {
+            if (currency === 'TRY') {
+                return '₺ ' + value.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+            } else if (currency === 'USD') {
+                return '$ ' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            return value.toLocaleString('tr-TR');
+        }
+
+        function getIconConfig(type) {
+            const configs = {
+                'crypto': { icon: 'fa-brands fa-bitcoin', bg: 'orange' },
+                'gold': { icon: 'fa-solid fa-coins', bg: 'yellow' },
+                'stock': { icon: 'fa-solid fa-building', bg: 'gray' },
+                'currency': { icon: 'fa-solid fa-money-bill-wave', bg: 'green' }
+            };
+            return configs[type] || configs['stock'];
+        }
+
+        function renderAssets() {
+            const desktopBody = document.getElementById('desktopTableBody');
+            const mobileList = document.getElementById('mobileAssetList');
+
+            if (!desktopBody || !mobileList) return;
+
+            const filteredAssets = getFilteredAssets();
+
+            if (filteredAssets.length === 0) {
+                const filterText = currentFilter === 'all' ? '' : ` (${currentFilter} filtresi uygulandı)`;
+                const emptyMsg = `
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-gray-500 dark:text-gray-400">
+                            <i class="fa-solid fa-folder-open text-4xl mb-4 block opacity-50"></i>
+                            <p>Varlık bulunamadı${filterText}</p>
+                            <p class="text-sm">Yeni varlık eklemek için butona tıklayın</p>
+                        </td>
+                    </tr>
+                `;
+                desktopBody.innerHTML = emptyMsg;
+                mobileList.innerHTML = `
+                    <div class="p-8 text-center text-gray-500 dark:text-gray-400">
+                        <i class="fa-solid fa-folder-open text-4xl mb-4 block opacity-50"></i>
+                        <p>Varlık bulunamadı${filterText}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Desktop render
+            desktopBody.innerHTML = filteredAssets.map(asset => {
+                const iconCfg = getIconConfig(asset.type);
+                const isProfit = asset.profit_loss >= 0;
+                const profitClass = isProfit
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                    : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
+                const profitSign = isProfit ? '+' : '';
+
+                return `
+                    <tr class="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition duration-200">
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-${iconCfg.bg}-100 dark:bg-${iconCfg.bg}-900/30 text-${iconCfg.bg}-500 dark:text-${iconCfg.bg}-400 flex items-center justify-center text-lg shadow-sm">
+                                    <i class="${asset.icon || iconCfg.icon}"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-gray-800 dark:text-gray-100">${asset.name}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">${asset.symbol}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-4 text-right font-medium text-gray-700 dark:text-gray-300">${asset.quantity} ${asset.symbol}</td>
+                        <td class="p-4 text-right text-gray-500 dark:text-gray-400">${formatCurrency(asset.avg_cost, asset.currency)}</td>
+                        <td class="p-4 text-right font-semibold text-gray-800 dark:text-gray-200">${formatCurrency(asset.current_price, asset.currency)}</td>
+                        <td class="p-4 text-right">
+                            <span class="${profitClass} px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                                ${profitSign} ${formatCurrency(Math.abs(asset.profit_loss || 0), asset.currency)}
+                            </span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                                <button onclick="openBuyModal(${asset.id})" class="text-blue-500 hover:text-blue-600 dark:text-blue-400 p-2 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20 transition" title="Alım Ekle">
+                                    <i class="fa-solid fa-circle-plus text-lg"></i>
+                                </button>
+                                <button onclick="openSellModal(${asset.id})" class="text-orange-500 hover:text-orange-600 dark:text-orange-400 p-2 rounded-full hover:bg-orange-50 dark:hover:bg-orange-900/20 transition" title="Satış Yap">
+                                    <i class="fa-solid fa-circle-minus text-lg"></i>
+                                </button>
+                                <button onclick="openEditModal(${asset.id})" class="text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 p-2 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition" title="Düzenle">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="confirmDelete(${asset.id})" class="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition" title="Sil">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Mobile render
+            mobileList.innerHTML = filteredAssets.map(asset => {
+                const iconCfg = getIconConfig(asset.type);
+                const isProfit = asset.profit_loss >= 0;
+                const profitClass = isProfit
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                    : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
+                const profitSign = isProfit ? '+' : '';
+
+                return `
+                    <div class="p-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-${iconCfg.bg}-100 dark:bg-${iconCfg.bg}-900/30 text-${iconCfg.bg}-500 dark:text-${iconCfg.bg}-400 flex items-center justify-center text-lg shadow-sm">
+                                    <i class="${asset.icon || iconCfg.icon}"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-gray-800 dark:text-gray-100">${asset.name}</div>
+                                    <div class="text-xs text-gray-400 dark:text-gray-500">${asset.quantity} ${asset.symbol}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="${profitClass} px-2 py-1 rounded text-xs font-bold">
+                                    ${profitSign} ${formatCurrency(Math.abs(asset.profit_loss || 0), asset.currency)}
+                                </span>
+                                <div class="flex items-center">
+                                    <button onclick="openBuyModal(${asset.id})" class="text-blue-500 p-2"><i class="fa-solid fa-circle-plus text-lg"></i></button>
+                                    <button onclick="openSellModal(${asset.id})" class="text-orange-500 p-2"><i class="fa-solid fa-circle-minus text-lg"></i></button>
+                                    <button onclick="openEditModal(${asset.id})" class="text-emerald-500 p-2"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button onclick="confirmDelete(${asset.id})" class="text-gray-300 dark:text-gray-600 p-2"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg border border-gray-100 dark:border-gray-600">
+                                <div class="text-xs text-gray-400">Ort. Alış</div>
+                                <div class="font-medium text-gray-600 dark:text-gray-300">${formatCurrency(asset.avg_cost, asset.currency)}</div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg border border-gray-100 dark:border-gray-600">
+                                <div class="text-xs text-gray-400">Güncel</div>
+                                <div class="font-semibold text-gray-800 dark:text-gray-200">${formatCurrency(asset.current_price, asset.currency)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function updateSummary() {
+            const summary = await fetchSummary();
+            if (!summary) return;
+
+            const totalValueEl = document.getElementById('totalValue');
+            const totalProfitEl = document.getElementById('totalProfit');
+            const totalProfitPercentEl = document.getElementById('totalProfitPercent');
+            const realizedProfitEl = document.getElementById('realizedProfit');
+            const totalOverallProfitEl = document.getElementById('totalOverallProfit');
+            const bottomTotalEl = document.getElementById('bottomTotalProfit');
+            const desktopTotalEl = document.getElementById('desktopTotalProfit');
+
+            if (totalValueEl) {
+                const formatted = formatCurrency(summary.total_value, 'TRY').split(',');
+                totalValueEl.innerHTML = `${formatted[0]}<span class="text-2xl opacity-60">,${formatted[1] || '00'}</span>`;
+            }
+
+            // Gerçekleşmemiş kar/zarar
+            const unrealizedProfit = summary.total_unrealized_profit || 0;
+            const isUnrealizedProfit = unrealizedProfit >= 0;
+            const unrealizedSign = isUnrealizedProfit ? '+' : '';
+            const unrealizedText = `${unrealizedSign} ${formatCurrency(Math.abs(unrealizedProfit), 'TRY')}`;
+            const percentText = `%${Math.abs(summary.total_profit_loss_percent || 0).toFixed(1)}`;
+
+            if (totalProfitEl) {
+                totalProfitEl.textContent = unrealizedText;
+                totalProfitEl.className = `text-2xl font-bold ${isUnrealizedProfit ? 'text-green-300' : 'text-red-300'} flex items-center gap-2`;
+            }
+
+            if (totalProfitPercentEl) {
+                totalProfitPercentEl.textContent = percentText;
+            }
+
+            // Gerçekleşmiş kar
+            const realizedProfit = summary.total_realized_profit || 0;
+            const isRealizedProfit = realizedProfit >= 0;
+            const realizedSign = isRealizedProfit ? '+' : '';
+
+            if (realizedProfitEl) {
+                realizedProfitEl.innerHTML = `
+                    <i class="fa-solid fa-check-circle text-sm"></i>
+                    ${realizedSign} ${formatCurrency(Math.abs(realizedProfit), 'TRY')}
+                `;
+                realizedProfitEl.className = `text-xl font-bold ${isRealizedProfit ? 'text-emerald-300' : 'text-red-300'} flex items-center gap-2`;
+            }
+
+            // Toplam kar (gerçekleşmiş + gerçekleşmemiş)
+            const totalProfit = unrealizedProfit + realizedProfit;
+            const isTotalProfit = totalProfit >= 0;
+            const totalSign = isTotalProfit ? '+' : '';
+
+            if (totalOverallProfitEl) {
+                totalOverallProfitEl.innerHTML = `
+                    <i class="fa-solid fa-coins text-sm"></i>
+                    ${totalSign} ${formatCurrency(Math.abs(totalProfit), 'TRY')}
+                `;
+                totalOverallProfitEl.className = `text-xl font-bold ${isTotalProfit ? 'text-yellow-300' : 'text-red-300'} flex items-center gap-2`;
+            }
+
+            if (bottomTotalEl) {
+                bottomTotalEl.textContent = `${totalSign} ${formatCurrency(Math.abs(totalProfit), 'TRY')}`;
+                bottomTotalEl.className = `text-xl font-bold ${isTotalProfit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`;
+            }
+
+            if (desktopTotalEl) {
+                desktopTotalEl.innerHTML = `${totalSign} ${formatCurrency(Math.abs(totalProfit), 'TRY')}`;
+                desktopTotalEl.className = `text-3xl font-bold ${isTotalProfit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} tracking-tight mt-1`;
+            }
+        }
+
+        // =====================
+        // MODAL İŞLEMLERİ
+        // =====================
+        function openBuyModal(assetId) {
+            selectedAssetId = assetId;
+            const asset = assets.find(a => a.id === assetId);
+            if (asset) {
+                document.getElementById('buyAssetName').textContent = asset.name;
+            }
+            toggleModal('buyAssetModal');
+        }
+
+        function openSellModal(assetId) {
+            selectedAssetId = assetId;
+            const asset = assets.find(a => a.id === assetId);
+            if (asset) {
+                document.getElementById('sellAssetName').textContent = asset.name;
+                document.getElementById('sellMaxQuantity').textContent = `Mevcut: ${asset.quantity} ${asset.symbol}`;
+            }
+            toggleModal('sellAssetModal');
+        }
+
+        function confirmDelete(assetId) {
+            if (confirm('Bu varlığı silmek istediğinize emin misiniz?')) {
+                deleteAsset(assetId);
+            }
+        }
+
+        async function confirmClearAll() {
+            if (confirm('⚠️ TÜM KAYITLAR SİLİNECEK!\n\nBu işlem geri alınamaz. Tüm varlıklar ve işlem geçmişi silinecektir.\n\nDevam etmek istiyor musunuz?')) {
+                try {
+                    showLoading();
+                    const response = await fetch(`${API_BASE}/clear`, { method: 'DELETE' });
+                    if (response.ok) {
+                        await fetchAssets();
+                        showToast('Tüm veriler temizlendi', 'success');
+                    } else {
+                        showToast('Veriler temizlenirken hata oluştu', 'error');
+                    }
+                } catch (error) {
+                    console.error('Temizleme hatası:', error);
+                    showToast('Sunucu bağlantı hatası', 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+        }
+
+        function openEditModal(assetId) {
+            selectedAssetId = assetId;
+            const asset = assets.find(a => a.id === assetId);
+            if (asset) {
+                document.getElementById('editAssetName').textContent = `${asset.name} (${asset.symbol})`;
+                document.getElementById('editQuantity').value = asset.quantity;
+                document.getElementById('editAvgCost').value = asset.avg_cost;
+                document.getElementById('editCurrentPrice').value = asset.current_price;
+            }
+            toggleModal('editAssetModal');
+        }
+
+        async function handleEditAsset(event) {
+            event.preventDefault();
+            const form = event.target;
+            const quantity = parseFloat(form.querySelector('[name="quantity"]').value);
+            const avg_cost = parseFloat(form.querySelector('[name="avg_cost"]').value);
+            const current_price = parseFloat(form.querySelector('[name="current_price"]').value);
+
+            // Validasyon
+            if (!validatePositiveNumber(quantity, 'Miktar')) return;
+            if (avg_cost < 0) {
+                showToast('Ortalama alış fiyatı negatif olamaz', 'error');
+                return;
+            }
+            if (current_price < 0) {
+                showToast('Güncel fiyat negatif olamaz', 'error');
+                return;
+            }
+
+            if (selectedAssetId) {
+                const success = await updateAsset(selectedAssetId, {
+                    quantity,
+                    avg_cost,
+                    current_price
+                });
+                if (success) {
+                    form.reset();
+                    toggleModal('editAssetModal');
+                }
+            }
+        }
+
+        // Form submit handlers
+        async function handleAddAsset(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+
+            const typeMap = {
+                'Kripto Para': 'crypto',
+                'Hisse Senedi': 'stock',
+                'Altın': 'gold',
+                'Döviz': 'currency'
+            };
+
+            const quantity = parseFloat(formData.get('quantity')) || 0;
+            const avgCost = parseFloat(formData.get('avg_cost')) || 0;
+
+            // Validasyon
+            if (!validatePositiveNumber(quantity, 'Miktar')) return;
+            if (!validatePositiveNumber(avgCost, 'Alış Fiyatı')) return;
+
+            const data = {
+                name: formData.get('name'),
+                symbol: formData.get('symbol'),
+                type: typeMap[formData.get('type')] || 'stock',
+                quantity: quantity,
+                avg_cost: avgCost,
+                current_price: avgCost, // Başlangıçta alış fiyatı ile aynı
+                currency: formData.get('currency') || 'TRY'
+            };
+
+            const success = await createAsset(data);
+            if (success) {
+                form.reset();
+                document.getElementById('presetAssetSelect').value = '';
+                toggleModal('addAssetModal');
+            }
+        }
+
+        async function handleBuyAsset(event) {
+            event.preventDefault();
+            const form = event.target;
+            const quantity = parseFloat(form.querySelector('[name="quantity"]').value);
+            const price = parseFloat(form.querySelector('[name="price"]').value);
+
+            if (selectedAssetId && quantity && price) {
+                const success = await buyAsset(selectedAssetId, quantity, price);
+                if (success) {
+                    form.reset();
+                    toggleModal('buyAssetModal');
+                }
+            }
+        }
+
+        async function handleSellAsset(event) {
+            event.preventDefault();
+            const form = event.target;
+            const quantity = parseFloat(form.querySelector('[name="quantity"]').value);
+            const price = parseFloat(form.querySelector('[name="price"]').value);
+
+            if (selectedAssetId && quantity && price) {
+                const success = await sellAsset(selectedAssetId, quantity, price);
+                if (success) {
+                    form.reset();
+                    toggleModal('sellAssetModal');
+                }
+            }
+        }
+
+        // =====================
+        // DARK MODE
+        // =====================
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        }
+
+        // =====================
+        // MODAL LOGIC
+        // =====================
+        function toggleModal(modalId) {
+            const modal = document.getElementById(modalId);
+            const backdrop = modal.querySelector('.modal-backdrop');
+            const panel = modal.querySelector('.modal-panel');
+
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    backdrop.classList.remove('opacity-0');
+                    panel.classList.remove('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+                    panel.classList.add('translate-y-0', 'sm:scale-100');
+                }, 10);
+            } else {
+                backdrop.classList.add('opacity-0');
+                panel.classList.add('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+                panel.classList.remove('translate-y-0', 'sm:scale-100');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        // =====================
+        // EXPORT/IMPORT FUNCTIONS
+        // =====================
+        
+        // Export menu toggle
+        function toggleExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Close export menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('exportDropdown');
+            if (dropdown && !dropdown.contains(e.target)) {
+                document.getElementById('exportMenu').classList.add('hidden');
+            }
+        });
+
+        // Export data function
+        async function exportData(type, format) {
+            try {
+                showLoading();
+                const response = await fetch(`/api/export/${type}?format=${format}`);
+                
+                if (!response.ok) {
+                    throw new Error('Export başarısız');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${type}-${new Date().toISOString().split('T')[0]}.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showToast(`${type} başarıyla export edildi (${format.toUpperCase()})`, 'success');
+                document.getElementById('exportMenu').classList.add('hidden');
+            } catch (error) {
+                showToast('Export hatası: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Import data function
+        async function importAssets() {
+            const fileInput = document.getElementById('importFile');
+            const formatSelect = document.getElementById('importFormat');
+            
+            if (!fileInput.files[0]) {
+                showToast('Lütfen bir dosya seçin', 'error');
+                return;
+            }
+
+            try {
+                showLoading();
+                const file = fileInput.files[0];
+                const format = formatSelect.value;
+                const text = await file.text();
+
+                const response = await fetch('/api/import/assets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: text, format })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(`✅ ${result.imported} varlık import edildi, ${result.errors} hata`, 'success');
+                    toggleModal('importModal');
+                    fetchAssets();
+                    fileInput.value = '';
+                } else {
+                    showToast('Import başarısız', 'error');
+                }
+            } catch (error) {
+                showToast('Import hatası: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // =====================
+        // REPORTS FUNCTIONS
+        // =====================
+        
+        async function loadReports() {
+            try {
+                showLoading();
+                
+                // Load all reports in parallel
+                const [monthly, performance, distribution, risk, topPerformers] = await Promise.all([
+                    fetch('/api/reports/monthly').then(r => r.json()),
+                    fetch('/api/reports/performance').then(r => r.json()),
+                    fetch('/api/reports/distribution').then(r => r.json()),
+                    fetch('/api/reports/risk').then(r => r.json()),
+                    fetch('/api/reports/top-performers?limit=5').then(r => r.json())
+                ]);
+
+                renderMonthlyReport(monthly);
+                renderPerformanceReport(performance);
+                renderDistributionReport(distribution);
+                renderRiskAnalysis(risk);
+                renderTopPerformers(topPerformers);
+            } catch (error) {
+                showToast('Raporlar yüklenemedi: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderMonthlyReport(data) {
+            const tbody = document.getElementById('monthlyReportBody');
+            if (!tbody) return;
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Henüz işlem yok</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(month => `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="p-3">${month.month}</td>
+                    <td class="p-3 text-right">${month.buyCount}</td>
+                    <td class="p-3 text-right">${formatCurrency(month.buyTotal)}</td>
+                    <td class="p-3 text-right">${month.sellCount}</td>
+                    <td class="p-3 text-right">${formatCurrency(month.sellTotal)}</td>
+                    <td class="p-3 text-right ${month.realizedProfit >= 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${formatCurrency(month.realizedProfit)}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPerformanceReport(data) {
+            const tbody = document.getElementById('performanceReportBody');
+            if (!tbody) return;
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Henüz varlık yok</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.slice(0, 10).map(asset => `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="p-3">${asset.name} (${asset.symbol})</td>
+                    <td class="p-3 text-right">${formatCurrency(asset.costBasis)}</td>
+                    <td class="p-3 text-right">${formatCurrency(asset.currentValue)}</td>
+                    <td class="p-3 text-right ${asset.profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${formatCurrency(asset.profitLoss)}
+                    </td>
+                    <td class="p-3 text-right ${asset.profitLossPercent >= 0 ? 'text-green-600' : 'text-red-600'}">
+                        ${asset.profitLossPercent.toFixed(2)}%
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderDistributionReport(data) {
+            const container = document.getElementById('distributionReport');
+            if (!container) return;
+
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-center py-8 text-gray-500">Henüz varlık yok</p>';
+                return;
+            }
+
+            container.innerHTML = data.map(item => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div>
+                        <div class="font-medium capitalize">${item.type}</div>
+                        <div class="text-sm text-gray-500">${item.count} varlık</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-semibold">${formatCurrency(item.totalValue)}</div>
+                        <div class="text-sm text-gray-500">${item.percentage.toFixed(1)}%</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderRiskAnalysis(data) {
+            const container = document.getElementById('riskAnalysis');
+            if (!container) return;
+
+            const scoreColor = data.diversification.score >= 70 ? 'text-green-600' : 
+                              data.diversification.score >= 40 ? 'text-yellow-600' : 'text-red-600';
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="text-sm text-gray-500 mb-1">Diversifikasyon Skoru</div>
+                        <div class="text-2xl font-bold ${scoreColor}">${data.diversification.score}/100</div>
+                        <div class="text-xs text-gray-500 mt-1">${data.diversification.assetCount} varlık, ${data.diversification.typeCount} tür</div>
+                    </div>
+                    <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="text-sm text-gray-500 mb-1">En Büyük Varlık</div>
+                        <div class="text-2xl font-bold">${data.concentration.topAssetPercentage.toFixed(1)}%</div>
+                        <div class="text-xs text-gray-500 mt-1">Portföy ağırlığı</div>
+                    </div>
+                    <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="text-sm text-gray-500 mb-1">Top 3 Konsantrasyon</div>
+                        <div class="text-2xl font-bold">${data.concentration.top3Percentage.toFixed(1)}%</div>
+                        <div class="text-xs text-gray-500 mt-1">İlk 3 varlık</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTopPerformers(data) {
+            const gainersContainer = document.getElementById('topGainers');
+            const losersContainer = document.getElementById('topLosers');
+            
+            if (!gainersContainer || !losersContainer) return;
+
+            if (data.topGainers.length === 0) {
+                gainersContainer.innerHTML = '<p class="text-center py-4 text-gray-500">Henüz kazanan yok</p>';
+            } else {
+                gainersContainer.innerHTML = data.topGainers.map(asset => `
+                    <div class="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <div>
+                            <div class="font-medium">${asset.name}</div>
+                            <div class="text-sm text-gray-500">${asset.symbol}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-semibold text-green-600">${formatCurrency(asset.profitLoss)}</div>
+                            <div class="text-sm text-green-600">+${asset.profitLossPercent.toFixed(2)}%</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            if (data.topLosers.length === 0) {
+                losersContainer.innerHTML = '<p class="text-center py-4 text-gray-500">Henüz kaybeden yok</p>';
+            } else {
+                losersContainer.innerHTML = data.topLosers.map(asset => `
+                    <div class="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                        <div>
+                            <div class="font-medium">${asset.name}</div>
+                            <div class="text-sm text-gray-500">${asset.symbol}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-semibold text-red-600">${formatCurrency(asset.profitLoss)}</div>
+                            <div class="text-sm text-red-600">${asset.profitLossPercent.toFixed(2)}%</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // =====================
+        // INIT
+        // =====================
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAssets();
+        });
+    </script>
+</body>
+
+</html>
