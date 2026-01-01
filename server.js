@@ -120,7 +120,7 @@ const limiter = rateLimit({
 });
 
 // Apply rate limiting to API routes
-app.use('/api/', limiter);
+app.use('/api/v1/', limiter);
 
 // Stricter rate limit for price refresh (expensive operation)
 const priceRefreshLimiter = rateLimit({
@@ -144,7 +144,7 @@ app.use(express.urlencoded({
 }));
 
 // Input sanitization
-app.use('/api/', sanitizeAll);
+app.use('/api/v1/', sanitizeAll);
 
 // Serve static files
 app.use(express.static(__dirname, {
@@ -183,7 +183,7 @@ async function startServer() {
     // =====================
 
     // Health check endpoint
-    app.get('/api/health', (req, res) => {
+    app.get('/api/v1/health', (req, res) => {
         res.json({
             status: 'healthy',
             uptime: process.uptime(),
@@ -194,24 +194,24 @@ async function startServer() {
     });
 
     // Performance metrics endpoint
-    app.get('/api/metrics', (req, res) => {
+    app.get('/api/v1/metrics', (req, res) => {
         res.json(metrics.getStats());
     });
 
     // Portföy özeti (cache: 30 saniye)
-    app.get('/api/summary', cacheMiddleware(30000), asyncHandler(async (req, res) => {
+    app.get('/api/v1/summary', cacheMiddleware(30000), asyncHandler(async (req, res) => {
         const summary = db.getPortfolioSummary();
         res.json(summary);
     }));
 
     // Tüm varlıkları listele (cache: 10 saniye)
-    app.get('/api/assets', cacheMiddleware(10000), asyncHandler(async (req, res) => {
+    app.get('/api/v1/assets', cacheMiddleware(10000), asyncHandler(async (req, res) => {
         const assets = db.getAllAssets();
         res.json(assets);
     }));
 
     // Tek varlık getir
-    app.get('/api/assets/:id', validateId, (req, res) => {
+    app.get('/api/v1/assets/:id', validateId, (req, res) => {
         try {
             const id = parseInt(req.params.id);
             const asset = db.getAssetById(id);
@@ -229,7 +229,7 @@ async function startServer() {
     });
 
     // Yeni varlık ekle
-    app.post('/api/assets', validateCreateAsset, (req, res) => {
+    app.post('/api/v1/assets', validateCreateAsset, (req, res) => {
         try {
             const { name, symbol, type, quantity, avg_cost, currency, icon, icon_bg } = req.body;
 
@@ -249,8 +249,8 @@ async function startServer() {
             });
 
             // Cache'i invalidate et
-            invalidateCache('/api/assets');
-            invalidateCache('/api/summary');
+            invalidateCache('/api/v1/assets');
+            invalidateCache('/api/v1/summary');
 
             res.status(201).json(asset);
         } catch (error) {
@@ -263,7 +263,7 @@ async function startServer() {
     });
 
     // Varlık güncelle
-    app.put('/api/assets/:id', validateUpdateAsset, (req, res) => {
+    app.put('/api/v1/assets/:id', validateUpdateAsset, (req, res) => {
         try {
             const id = parseInt(req.params.id);
             const asset = db.updateAsset(id, req.body);
@@ -273,8 +273,8 @@ async function startServer() {
             }
 
             // Cache'i invalidate et
-            invalidateCache('/api/assets');
-            invalidateCache('/api/summary');
+            invalidateCache('/api/v1/assets');
+            invalidateCache('/api/v1/summary');
 
             res.json(asset);
         } catch (error) {
@@ -287,7 +287,7 @@ async function startServer() {
     });
 
     // Varlık sil
-    app.delete('/api/assets/:id', validateId, (req, res) => {
+    app.delete('/api/v1/assets/:id', validateId, (req, res) => {
         try {
             const id = parseInt(req.params.id);
             const asset = db.getAssetById(id);
@@ -298,8 +298,8 @@ async function startServer() {
             db.deleteAsset(id);
 
             // Cache'i invalidate et
-            invalidateCache('/api/assets');
-            invalidateCache('/api/summary');
+            invalidateCache('/api/v1/assets');
+            invalidateCache('/api/v1/summary');
 
             res.json({ 
                 success: true, 
@@ -315,7 +315,7 @@ async function startServer() {
     });
 
     // Alım işlemi
-    app.post('/api/assets/:id/buy', validateTransaction, (req, res) => {
+    app.post('/api/v1/assets/:id/buy', validateTransaction, (req, res) => {
         try {
             const id = parseInt(req.params.id);
             const { quantity, price } = req.body;
@@ -330,9 +330,9 @@ async function startServer() {
             }
 
             // Cache'i invalidate et
-            invalidateCache('/api/assets');
-            invalidateCache('/api/summary');
-            invalidateCache('/api/transactions');
+            invalidateCache('/api/v1/assets');
+            invalidateCache('/api/v1/summary');
+            invalidateCache('/api/v1/transactions');
 
             res.json(asset);
         } catch (error) {
@@ -345,7 +345,7 @@ async function startServer() {
     });
 
     // Satış işlemi
-    app.post('/api/assets/:id/sell', validateTransaction, (req, res) => {
+    app.post('/api/v1/assets/:id/sell', validateTransaction, (req, res) => {
         try {
             const id = parseInt(req.params.id);
             const { quantity, price } = req.body;
@@ -364,9 +364,9 @@ async function startServer() {
             }
 
             // Cache'i invalidate et
-            invalidateCache('/api/assets');
-            invalidateCache('/api/summary');
-            invalidateCache('/api/transactions');
+            invalidateCache('/api/v1/assets');
+            invalidateCache('/api/v1/summary');
+            invalidateCache('/api/v1/transactions');
 
             res.json(result);
         } catch (error) {
@@ -379,7 +379,7 @@ async function startServer() {
     });
 
     // İşlem geçmişi (cache: 30 saniye)
-    app.get('/api/transactions', cacheMiddleware(30000), (req, res) => {
+    app.get('/api/v1/transactions', cacheMiddleware(30000), (req, res) => {
         try {
             const transactions = db.getAllTransactions();
             res.json(transactions);
@@ -393,7 +393,7 @@ async function startServer() {
     });
 
     // Belirli varlığın işlemleri
-    app.get('/api/assets/:id/transactions', validateId, (req, res) => {
+    app.get('/api/v1/assets/:id/transactions', validateId, (req, res) => {
         try {
             const id = parseInt(req.params.id);
             const transactions = db.getTransactionsByAsset(id);
@@ -408,7 +408,7 @@ async function startServer() {
     });
 
     // Tüm verileri temizle
-    app.delete('/api/clear', (req, res) => {
+    app.delete('/api/v1/clear', (req, res) => {
         try {
             db.clearAllData();
             res.json({ 
@@ -425,7 +425,7 @@ async function startServer() {
     });
 
     // Veri bütünlüğü kontrolü
-    app.get('/api/integrity/check', (req, res) => {
+    app.get('/api/v1/integrity/check', (req, res) => {
         try {
             const results = db.checkDataIntegrity();
             const totalIssues = 
@@ -448,7 +448,7 @@ async function startServer() {
     });
 
     // Veri bütünlüğü otomatik düzeltme
-    app.post('/api/integrity/fix', (req, res) => {
+    app.post('/api/v1/integrity/fix', (req, res) => {
         try {
             const fixed = db.autoFixDataIntegrity();
             res.json({
@@ -466,7 +466,7 @@ async function startServer() {
     });
 
     // Veritabanı backup
-    app.post('/api/backup', (req, res) => {
+    app.post('/api/v1/backup', (req, res) => {
         try {
             const backupPath = db.backupDatabase();
             res.json({
@@ -484,7 +484,7 @@ async function startServer() {
     });
 
     // Veritabanı restore
-    app.post('/api/restore', (req, res) => {
+    app.post('/api/v1/restore', (req, res) => {
         try {
             const { backupPath } = req.body;
             if (!backupPath) {
@@ -510,7 +510,7 @@ async function startServer() {
     // =====================
 
     // Export varlıklar
-    app.get('/api/export/assets', (req, res) => {
+    app.get('/api/v1/export/assets', (req, res) => {
         try {
             const format = req.query.format || 'json';
             const assets = db.getAllAssets();
@@ -530,7 +530,7 @@ async function startServer() {
     });
 
     // Export işlemler
-    app.get('/api/export/transactions', (req, res) => {
+    app.get('/api/v1/export/transactions', (req, res) => {
         try {
             const format = req.query.format || 'json';
             const transactions = db.getAllTransactions();
@@ -550,7 +550,7 @@ async function startServer() {
     });
 
     // Export tam portföy
-    app.get('/api/export/portfolio', (req, res) => {
+    app.get('/api/v1/export/portfolio', (req, res) => {
         try {
             const format = req.query.format || 'json';
             const summary = db.getPortfolioSummary();
@@ -572,7 +572,7 @@ async function startServer() {
     });
 
     // Import varlıklar
-    app.post('/api/import/assets', (req, res) => {
+    app.post('/api/v1/import/assets', (req, res) => {
         try {
             const { data, format } = req.body;
             if (!data) {
@@ -614,8 +614,8 @@ async function startServer() {
                 }
             });
             
-            invalidateCache('/api/assets');
-            invalidateCache('/api/summary');
+            invalidateCache('/api/v1/assets');
+            invalidateCache('/api/v1/summary');
             
             res.json({
                 success: true,
@@ -637,7 +637,7 @@ async function startServer() {
     // =====================
 
     // Aylık rapor
-    app.get('/api/reports/monthly', (req, res) => {
+    app.get('/api/v1/reports/monthly', (req, res) => {
         try {
             const transactions = db.getAllTransactions();
             const report = reportUtils.getMonthlyReport(transactions);
@@ -652,7 +652,7 @@ async function startServer() {
     });
 
     // Varlık performans raporu
-    app.get('/api/reports/performance', (req, res) => {
+    app.get('/api/v1/reports/performance', (req, res) => {
         try {
             const assets = db.getAllAssets();
             const report = reportUtils.getAssetPerformanceReport(assets);
@@ -667,7 +667,7 @@ async function startServer() {
     });
 
     // Tür dağılım raporu
-    app.get('/api/reports/distribution', (req, res) => {
+    app.get('/api/v1/reports/distribution', (req, res) => {
         try {
             const assets = db.getAllAssets();
             const report = reportUtils.getTypeDistributionReport(assets);
@@ -682,7 +682,7 @@ async function startServer() {
     });
 
     // İşlem özeti
-    app.get('/api/reports/transactions', (req, res) => {
+    app.get('/api/v1/reports/transactions', (req, res) => {
         try {
             const { startDate, endDate } = req.query;
             let transactions = db.getAllTransactions();
@@ -703,7 +703,7 @@ async function startServer() {
     });
 
     // Portföy değer geçmişi
-    app.get('/api/reports/history', (req, res) => {
+    app.get('/api/v1/reports/history', (req, res) => {
         try {
             const transactions = db.getAllTransactions();
             const assets = db.getAllAssets();
@@ -719,7 +719,7 @@ async function startServer() {
     });
 
     // En iyi performans gösterenler
-    app.get('/api/reports/top-performers', (req, res) => {
+    app.get('/api/v1/reports/top-performers', (req, res) => {
         try {
             const limit = parseInt(req.query.limit) || 5;
             const assets = db.getAllAssets();
@@ -735,7 +735,7 @@ async function startServer() {
     });
 
     // Risk analizi
-    app.get('/api/reports/risk', (req, res) => {
+    app.get('/api/v1/reports/risk', (req, res) => {
         try {
             const assets = db.getAllAssets();
             const analysis = reportUtils.getRiskAnalysis(assets);
@@ -750,7 +750,7 @@ async function startServer() {
     });
 
     // Fiyatları güncelle (harici API'lerden)
-    app.post('/api/prices/refresh', priceRefreshLimiter, async (req, res) => {
+    app.post('/api/v1/prices/refresh', priceRefreshLimiter, async (req, res) => {
         try {
             const assets = db.getAllAssets();
             const results = await priceService.updateAllPrices(assets, (id, data) => {
@@ -758,8 +758,8 @@ async function startServer() {
             });
 
             // Cache'i invalidate et
-            invalidateCache('/api/assets');
-            invalidateCache('/api/summary');
+            invalidateCache('/api/v1/assets');
+            invalidateCache('/api/v1/summary');
 
             res.json({
                 success: true,

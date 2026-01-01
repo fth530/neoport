@@ -1,5 +1,5 @@
 // API Test Script
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'http://localhost:3000/api/v1';
 
 async function testAPI() {
     console.log('🧪 API Test Başlıyor...\n');
@@ -55,7 +55,7 @@ async function testAPI() {
         });
         const data = await res.json();
         console.log('✅ Varlık eklendi:', data.name, '(ID:', data.id + ')');
-        
+
         // Test 4: Varlık silme
         console.log('\nTest 4: Varlık silme');
         const deleteRes = await fetch(`${API_BASE}/assets/${data.id}`, {

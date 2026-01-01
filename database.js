@@ -29,43 +29,10 @@ async function initDatabase() {
         }
 
         // Tabloları oluştur
-        db.run(`
-            CREATE TABLE IF NOT EXISTS assets (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL CHECK(length(name) > 0 AND length(name) <= 100),
-                symbol TEXT NOT NULL CHECK(length(symbol) > 0 AND length(symbol) <= 20),
-                type TEXT NOT NULL CHECK(type IN ('crypto', 'stock', 'gold', 'currency')),
-                quantity REAL NOT NULL DEFAULT 0 CHECK(quantity >= 0),
-                avg_cost REAL NOT NULL DEFAULT 0 CHECK(avg_cost >= 0),
-                current_price REAL DEFAULT 0 CHECK(current_price >= 0),
-                currency TEXT DEFAULT 'TRY' CHECK(currency IN ('TRY', 'USD', 'EUR')),
-                icon TEXT DEFAULT 'fa-solid fa-coins',
-                icon_bg TEXT DEFAULT 'gray',
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(symbol, type)
-            )
-        `);
+        const { runMigrations } = require('./utils/migrate');
 
-        db.run(`
-            CREATE TABLE IF NOT EXISTS transactions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                asset_id INTEGER NOT NULL,
-                type TEXT NOT NULL CHECK(type IN ('buy', 'sell')),
-                quantity REAL NOT NULL CHECK(quantity > 0),
-                price REAL NOT NULL CHECK(price >= 0),
-                total REAL NOT NULL CHECK(total >= 0),
-                realized_profit REAL DEFAULT 0,
-                date TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
-            )
-        `);
-
-        // Index'ler oluştur (performans için)
-        db.run('CREATE INDEX IF NOT EXISTS idx_assets_type ON assets(type)');
-        db.run('CREATE INDEX IF NOT EXISTS idx_assets_symbol ON assets(symbol)');
-        db.run('CREATE INDEX IF NOT EXISTS idx_transactions_asset_id ON transactions(asset_id)');
-        db.run('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)');
+        // Tabloları migration sistemi ile oluştur
+        await runMigrations(db);
 
         saveDatabase();
         console.log('✅ Veritabanı başarıyla başlatıldı');
@@ -82,7 +49,7 @@ function saveDatabase() {
         console.error('⚠️ Veritabanı nesnesi mevcut değil');
         return;
     }
-    
+
     try {
         const data = db.export();
         const buffer = Buffer.from(data);
@@ -99,12 +66,12 @@ let saveTimeout = null;
 
 function saveDatabaseBatch() {
     if (savePending) return;
-    
+
     savePending = true;
-    
+
     // 100ms bekle, birden fazla işlem varsa toplu kaydet
     if (saveTimeout) clearTimeout(saveTimeout);
-    
+
     saveTimeout = setTimeout(() => {
         saveDatabase();
         savePending = false;
@@ -166,7 +133,7 @@ function createAsset(asset) {
         // Validasyon
         ConstraintValidator.validateQuantity(asset.quantity || 0);
         ConstraintValidator.validatePrice(asset.avg_cost || 0);
-        
+
         // Duplicate kontrolü
         const existing = db.prepare('SELECT id FROM assets WHERE symbol = ? AND type = ?');
         existing.bind([asset.symbol, asset.type]);
@@ -253,7 +220,7 @@ function deleteAsset(id) {
         db.run('DELETE FROM transactions WHERE asset_id = ?', [id]);
         db.run('DELETE FROM assets WHERE id = ?', [id]);
         saveDatabase();
-        
+
         console.log(`✅ Varlık silindi: ${asset.name} (ID: ${id})`);
         return { success: true };
     } catch (error) {
@@ -335,7 +302,7 @@ function createTransaction(tx) {
         // Validasyon
         ConstraintValidator.validateQuantity(tx.quantity);
         ConstraintValidator.validatePrice(tx.price);
-        
+
         const total = tx.quantity * tx.price;
         const realizedProfit = tx.realized_profit || 0;
 
@@ -456,12 +423,12 @@ function backupDatabase(backupPath) {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             backupPath = path.join(__dirname, `backups/portfolio-${timestamp}.db`);
         }
-        
+
         const backupDir = path.dirname(backupPath);
         if (!fs.existsSync(backupDir)) {
             fs.mkdirSync(backupDir, { recursive: true });
         }
-        
+
         fs.copyFileSync(DB_PATH, backupPath);
         console.log(`✅ Backup oluşturuldu: ${backupPath}`);
         return backupPath;
@@ -477,15 +444,15 @@ function restoreDatabase(backupPath) {
         if (!fs.existsSync(backupPath)) {
             throw new Error('Backup dosyası bulunamadı');
         }
-        
+
         fs.copyFileSync(backupPath, DB_PATH);
         console.log(`✅ Backup restore edildi: ${backupPath}`);
-        
+
         // Veritabanını yeniden yükle
         const fileBuffer = fs.readFileSync(DB_PATH);
         const SQL = require('sql.js');
         db = new SQL.Database(fileBuffer);
-        
+
         return { success: true };
     } catch (error) {
         console.error('❌ Restore hatası:', error);
