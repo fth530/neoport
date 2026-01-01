@@ -1,229 +1,206 @@
-# 🗺️ NeoPort Roadmap
+# 🗺️ NeoPort Roadmap (Single-User Focus)
 
-## 📋 Mevcut Durum (v1.4.0)
-✅ **Tamamlandı**: Temel portföy yönetimi, export/import, raporlama, güvenlik, performans optimizasyonu, API dokümantasyonu
-
----
-
-## 🎯 Gelecek Planları
-
-### 🔥 Faz 1: Teknik Borç Temizliği (1-2 saat)
-**Öncelik**: Orta | **Süre**: 45-65 dakika
-
-#### 1.1 Database Migration System (25-30 dk)
-- [ ] Migration dosyası yapısı (`migrations/` klasörü)
-- [ ] Version tracking tablosu (`schema_migrations`)
-- [ ] Migration runner (`npm run migrate`)
-- [ ] Rollback desteği (`npm run migrate:rollback`)
-
-#### 1.2 Frontend Test Suite (15-20 dk)
-- [ ] Jest + Testing Library setup
-- [ ] DOM manipulation testleri
-- [ ] API call testleri
-- [ ] Form validation testleri
-- [ ] `npm run test:frontend` script
-
-#### 1.3 API Versioning (10-15 dk)
-- [ ] `/api/v1/` prefix ekleme
-- [ ] Routing güncelleme
-- [ ] Backward compatibility
-- [ ] Version header desteği
+## 📋 Mevcut Durum (v1.4.1)
+✅ **Tamamlandı**: 
+- Temel portföy yönetimi, export/import, raporlama
+- Güvenlik, performans optimizasyonu, API dokümantasyonu  
+- **Teknik borç temizliği (11/11 tamamlandı)**
+- Database migration system, Frontend test suite, API versioning
 
 ---
 
-### 🚀 Faz 2: Authentication & Multi-User (2-3 saat)
-**Öncelik**: Yüksek | **Süre**: 2-3 saat
+## 🎯 Single-User Roadmap (Production Ready)
 
-#### 2.1 Authentication System (60-90 dk)
-- [ ] JWT token sistemi
-- [ ] Login/Register endpoints
-- [ ] Password hashing (bcrypt)
-- [ ] Auth middleware
-- [ ] Login/Register UI
+### 🚀 Faz 1: Production Deployment (1-2 saat)
+**Öncelik**: Yüksek | **Süre**: 1-2 saat | **Hedef**: Hemen kullanıma hazır
 
-#### 2.2 Multi-User Support (45-60 dk)
-- [ ] User tablosu ekleme
-- [ ] Assets/Transactions user_id ile ilişkilendirme
-- [ ] User-specific data filtering
-- [ ] User profile management
+#### 1.1 Docker Containerization (30-45 dk)
+- [ ] Dockerfile oluşturma (Node.js Alpine)
+- [ ] Docker Compose setup (app + volume)
+- [ ] Multi-stage build (dev/prod)
+- [ ] Environment configs (.env handling)
+- [ ] Health check endpoint
 
-#### 2.3 Session Management (15-30 dk)
-- [ ] Token refresh mechanism
-- [ ] Logout functionality
-- [ ] Remember me option
-- [ ] Session timeout
+#### 1.2 Production Optimization (20-30 dk)
+- [ ] PM2 process manager
+- [ ] Production logging (Winston)
+- [ ] Graceful shutdown
+- [ ] Memory leak prevention
+- [ ] Error monitoring
+
+#### 1.3 Deployment Ready (15-20 dk)
+- [ ] SSL/HTTPS setup guide
+- [ ] Reverse proxy (Nginx) config
+- [ ] Domain configuration
+- [ ] Backup automation script
+- [ ] Monitoring dashboard
 
 ---
 
-### 📊 Faz 3: Advanced Analytics (2-3 saat)
-**Öncelik**: Orta | **Süre**: 2-3 saat
+### ⚡ Faz 2: Real-time Features (1-2 saat)
+**Öncelik**: Yüksek | **Süre**: 1-2 saat | **Hedef**: Canlı deneyim
 
-#### 3.1 Real-time Updates (45-60 dk)
-- [ ] WebSocket integration
+#### 2.1 WebSocket Integration (45-60 dk)
+- [ ] Socket.io server setup
 - [ ] Real-time price updates
-- [ ] Live portfolio value
-- [ ] Push notifications
+- [ ] Live portfolio value changes
+- [ ] Connection management
+- [ ] Fallback to polling
 
-#### 3.2 Advanced Charts (60-90 dk)
+#### 2.2 Push Notifications (20-30 dk)
+- [ ] Browser notification API
+- [ ] Price alert system
+- [ ] Portfolio milestone alerts
+- [ ] Daily summary notifications
+- [ ] Notification preferences
+
+#### 2.3 Auto-refresh System (10-15 dk)
+- [ ] Configurable refresh intervals
+- [ ] Smart refresh (only when tab active)
+- [ ] Background sync
+- [ ] Offline detection
+
+---
+
+### 📊 Faz 3: Advanced Analytics (1-2 saat)
+**Öncelik**: Orta | **Süre**: 1-2 saat | **Hedef**: Daha iyi analiz
+
+#### 3.1 Advanced Charts (60-90 dk)
 - [ ] Line chart (portfolio history)
-- [ ] Candlestick charts
+- [ ] Candlestick charts (price history)
 - [ ] Volume indicators
 - [ ] Technical analysis tools
-- [ ] Chart.js advanced features
+- [ ] Interactive chart controls
+- [ ] Chart export (PNG/PDF)
 
-#### 3.3 Portfolio Comparison (30-45 dk)
-- [ ] Time period comparison
-- [ ] Benchmark comparison (S&P 500, etc.)
-- [ ] Performance metrics
-- [ ] Sharpe ratio, volatility
+#### 3.2 Portfolio Analytics (30-45 dk)
+- [ ] Sharpe ratio calculation
+- [ ] Volatility analysis
+- [ ] Correlation matrix
+- [ ] Beta calculation
+- [ ] Performance benchmarking
+
+#### 3.3 Predictive Features (15-30 dk)
+- [ ] Moving averages (SMA, EMA)
+- [ ] Trend indicators
+- [ ] Support/resistance levels
+- [ ] Price predictions (basic)
 
 ---
 
-### 🎨 Faz 4: UX/UI İyileştirmeleri (1-2 saat)
-**Öncelik**: Orta | **Süre**: 1-2 saat
+### 🎨 Faz 4: UX/UI Polish (1 saat)
+**Öncelik**: Orta | **Süre**: 1 saat | **Hedef**: Profesyonel görünüm
 
-#### 4.1 PWA Features (30-45 dk)
+#### 4.1 PWA Features (30-40 dk)
 - [ ] Service Worker
 - [ ] Offline functionality
 - [ ] App manifest
 - [ ] Install prompt
+- [ ] Background sync
 
-#### 4.2 Mobile Optimization (20-30 dk)
-- [ ] Touch gestures
-- [ ] Mobile-first design
+#### 4.2 Mobile Optimization (15-20 dk)
+- [ ] Touch gestures (swipe, pinch)
+- [ ] Mobile-first design improvements
 - [ ] App-like navigation
 - [ ] Performance optimization
 
-#### 4.3 Accessibility (15-20 dk)
+#### 4.3 Accessibility & Polish (10-15 dk)
 - [ ] ARIA labels
 - [ ] Keyboard navigation
 - [ ] Screen reader support
-- [ ] Color contrast
+- [ ] Loading skeletons
+- [ ] Micro-animations
 
 ---
 
-### 🔔 Faz 5: Notifications & Alerts (1-2 saat)
-**Öncelik**: Düşük | **Süre**: 1-2 saat
+### 🔔 Faz 5: Smart Notifications (1 saat)
+**Öncelik**: Düşük | **Süre**: 1 saat | **Hedef**: Akıllı uyarılar
 
-#### 5.1 Price Alerts (45-60 dk)
+#### 5.1 Price Alerts (30-40 dk)
 - [ ] Price threshold alerts
-- [ ] Email notifications
-- [ ] Browser notifications
+- [ ] Percentage change alerts
+- [ ] Volume spike alerts
 - [ ] Alert management UI
+- [ ] Snooze functionality
 
-#### 5.2 Portfolio Reports (30-45 dk)
-- [ ] Daily/Weekly/Monthly reports
-- [ ] Email digest
+#### 5.2 Portfolio Reports (20-30 dk)
+- [ ] Daily/Weekly summary
+- [ ] Email digest (optional)
 - [ ] PDF export
 - [ ] Scheduled reports
+- [ ] Performance insights
 
 ---
 
-### 🏗️ Faz 6: Production & Deployment (2-3 saat)
-**Öncelik**: Yüksek | **Süre**: 2-3 saat
+### 🔒 Faz 6: Security & Backup (30-45 dk)
+**Öncelik**: Orta | **Süre**: 30-45 dk | **Hedef**: Veri güvenliği
 
-#### 6.1 Docker & Containerization (45-60 dk)
-- [ ] Dockerfile oluşturma
-- [ ] Docker Compose setup
-- [ ] Multi-stage build
-- [ ] Environment configs
+#### 6.1 Enhanced Backup (20-30 dk)
+- [ ] Automated daily backups
+- [ ] Cloud backup integration
+- [ ] Backup encryption
+- [ ] One-click restore
+- [ ] Backup verification
 
-#### 6.2 CI/CD Pipeline (60-90 dk)
-- [ ] GitHub Actions workflow
-- [ ] Automated testing
-- [ ] Build & deploy
-- [ ] Environment promotion
-
-#### 6.3 Production Setup (30-45 dk)
-- [ ] SSL/HTTPS setup
-- [ ] Domain configuration
-- [ ] Environment variables
-- [ ] Monitoring & logging
-
----
-
-### 🔒 Faz 7: Advanced Security (1-2 saat)
-**Öncelik**: Orta | **Süre**: 1-2 saat
-
-#### 7.1 Enhanced Security (45-60 dk)
-- [ ] 2FA (Two-Factor Authentication)
-- [ ] API key rotation
-- [ ] Audit logging
-- [ ] Intrusion detection
-
-#### 7.2 Data Protection (30-45 dk)
-- [ ] Data encryption at rest
-- [ ] GDPR compliance
-- [ ] Data backup automation
+#### 6.2 Data Protection (10-15 dk)
+- [ ] Data export compliance
 - [ ] Privacy controls
+- [ ] Data retention policies
+- [ ] Secure data deletion
 
 ---
 
-### 📈 Faz 8: Advanced Features (3-4 saat)
-**Öncelik**: Düşük | **Süre**: 3-4 saat
+## 📊 Güncellenmiş Öncelik Matrisi
 
-#### 8.1 Tax Reporting (60-90 dk)
-- [ ] Tax calculation engine
-- [ ] Capital gains/losses
-- [ ] Tax form generation
-- [ ] Multi-country support
+| Faz | Öncelik | Süre | Değer | Zorluk | ROI |
+|-----|---------|------|-------|--------|-----|
+| Faz 1: Production | Yüksek | 2h | Yüksek | Düşük | ⭐⭐⭐⭐⭐ |
+| Faz 2: Real-time | Yüksek | 2h | Yüksek | Orta | ⭐⭐⭐⭐ |
+| Faz 3: Analytics | Orta | 2h | Yüksek | Orta | ⭐⭐⭐⭐ |
+| Faz 4: UX/UI | Orta | 1h | Orta | Düşük | ⭐⭐⭐ |
+| Faz 5: Notifications | Düşük | 1h | Orta | Düşük | ⭐⭐ |
+| Faz 6: Security | Orta | 1h | Orta | Düşük | ⭐⭐⭐ |
 
-#### 8.2 Budget & Goals (45-60 dk)
-- [ ] Investment goals setting
-- [ ] Budget tracking
-- [ ] Goal progress visualization
-- [ ] Recommendations
+## 🎯 Önerilen Sıralama (Single-User)
 
-#### 8.3 Social Features (45-60 dk)
-- [ ] Portfolio sharing
-- [ ] Community features
-- [ ] Leaderboards
-- [ ] Social trading insights
+### 🚀 Kısa Vadeli (Bu Hafta)
+1. **Faz 1**: Production Deployment (2h)
+   - Docker + PM2 + Production ready
+   - Hemen kullanıma hazır!
 
----
+2. **Faz 2**: Real-time Features (2h)
+   - WebSocket + Push notifications
+   - Canlı deneyim!
 
-## 📊 Öncelik Matrisi
+### 📊 Orta Vadeli (Gelecek Hafta)
+3. **Faz 3**: Advanced Analytics (2h)
+   - Charts + Portfolio analytics
+   - Profesyonel analiz!
 
-| Faz | Öncelik | Süre | Değer | Zorluk |
-|-----|---------|------|-------|--------|
-| Faz 1: Teknik Borç | Orta | 1h | Orta | Düşük |
-| Faz 2: Authentication | Yüksek | 3h | Yüksek | Orta |
-| Faz 6: Production | Yüksek | 3h | Yüksek | Orta |
-| Faz 3: Analytics | Orta | 3h | Yüksek | Orta |
-| Faz 4: UX/UI | Orta | 2h | Orta | Düşük |
-| Faz 5: Notifications | Düşük | 2h | Orta | Düşük |
-| Faz 7: Security | Orta | 2h | Orta | Orta |
-| Faz 8: Advanced | Düşük | 4h | Düşük | Yüksek |
+4. **Faz 4**: UX/UI Polish (1h)
+   - PWA + Mobile optimization
+   - App-like deneyim!
 
-## 🎯 Önerilen Sıralama
-
-### Kısa Vadeli (1-2 hafta)
-1. **Faz 1**: Teknik Borç Temizliği
-2. **Faz 2**: Authentication & Multi-User
-3. **Faz 6**: Docker & Deployment
-
-### Orta Vadeli (1 ay)
-4. **Faz 3**: Advanced Analytics
-5. **Faz 4**: UX/UI İyileştirmeleri
-
-### Uzun Vadeli (2-3 ay)
-6. **Faz 5**: Notifications & Alerts
-7. **Faz 7**: Advanced Security
-8. **Faz 8**: Advanced Features
+### 🔔 Uzun Vadeli (İsteğe Bağlı)
+5. **Faz 5**: Smart Notifications (1h)
+6. **Faz 6**: Security & Backup (1h)
 
 ## 📝 Notlar
 
-- Her faz tamamlandıktan sonra version bump yapılacak
-- Test coverage her fazda artırılacak
-- Dokümantasyon sürekli güncellenecek
-- Community feedback'i alınacak
+- **Toplam süre**: ~8 saat (Multi-user olmadan %60 daha hızlı!)
+- **Odak**: Production-ready, real-time, analytics
+- **Hedef**: Profesyonel, kullanıma hazır uygulama
+- **Esneklik**: Her faz bağımsız, istediğin sırada yapabilirsin
 
-## 🤝 Katkıda Bulunma
+## 🤝 Sonraki Adım
 
-Bu roadmap açık kaynak topluluğunun katkılarına açıktır. Issue açarak veya PR göndererek katkıda bulunabilirsiniz.
+**Hangi fazdan başlamak istersin?**
+1. 🐳 **Docker + Production** (hemen kullanıma hazır)
+2. ⚡ **Real-time Updates** (canlı deneyim)
+3. 📊 **Advanced Charts** (daha iyi analiz)
 
 ---
 
 **Son Güncelleme**: 2025-12-31  
-**Mevcut Versiyon**: v1.4.0  
-**Hedef Versiyon**: v2.0.0 (Authentication + Production Ready)
+**Mevcut Versiyon**: v1.4.1 (Technical Debt Free)  
+**Hedef Versiyon**: v2.0.0 (Production Ready Single-User)
