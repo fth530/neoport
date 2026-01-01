@@ -5,6 +5,8 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const priceService = require('./priceService');
@@ -23,6 +25,7 @@ const exportUtils = require('./utils/export');
 const reportUtils = require('./utils/reports');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -89,8 +92,8 @@ app.use(trackMetrics);
 
 // CORS Configuration
 const corsOptions = {
-    origin: NODE_ENV === 'production' 
-        ? process.env.CORS_ORIGIN 
+    origin: NODE_ENV === 'production'
+        ? process.env.CORS_ORIGIN
         : '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -98,6 +101,23 @@ const corsOptions = {
     maxAge: 86400 // 24 hours
 };
 app.use(cors(corsOptions));
+
+// Socket.io Setup
+const io = new Server(server, {
+    cors: {
+        origin: NODE_ENV === 'production' ? process.env.CORS_ORIGIN : '*',
+        methods: ["GET", "POST"]
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log('🔌 Yeni istemci bağlandı:', socket.id);
+
+    socket.on('disconnect', () => {
+        console.log('❌ İstemci ayrıldı:', socket.id);
+    });
+});
+
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -133,14 +153,14 @@ const priceRefreshLimiter = rateLimit({
 });
 
 // Body parser with size limit
-app.use(express.json({ 
+app.use(express.json({
     limit: '1mb',
     strict: true
 }));
 
-app.use(express.urlencoded({ 
-    extended: true, 
-    limit: '1mb' 
+app.use(express.urlencoded({
+    extended: true,
+    limit: '1mb'
 }));
 
 // Input sanitization
@@ -221,9 +241,9 @@ async function startServer() {
             res.json(asset);
         } catch (error) {
             console.error('Varlık getirme hatası:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 error: 'Varlık getirilemedi',
-                details: error.message 
+                details: error.message
             });
         }
     });
@@ -255,9 +275,9 @@ async function startServer() {
             res.status(201).json(asset);
         } catch (error) {
             console.error('Varlık ekleme hatası:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 error: 'Varlık eklenemedi',
-                details: error.message 
+                details: error.message
             });
         }
     });
@@ -279,9 +299,9 @@ async function startServer() {
             res.json(asset);
         } catch (error) {
             console.error('Varlık güncelleme hatası:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 error: 'Varlık güncellenemedi',
-                details: error.message 
+                details: error.message
             });
         }
     });
@@ -301,15 +321,15 @@ async function startServer() {
             invalidateCache('/api/v1/assets');
             invalidateCache('/api/v1/summary');
 
-            res.json({ 
-                success: true, 
-                message: `${asset.name} silindi` 
+            res.json({
+                success: true,
+                message: `${asset.name} silindi`
             });
         } catch (error) {
             console.error('Varlık silme hatası:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 error: 'Varlık silinemedi',
-                details: error.message 
+                details: error.message
             });
         }
     });
@@ -337,9 +357,9 @@ async function startServer() {
             res.json(asset);
         } catch (error) {
             console.error('Alım işlemi hatası:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 error: 'Alım işlemi başarısız',
-                details: error.message 
+                details: error.message
             });
         }
     });
@@ -371,9 +391,9 @@ async function startServer() {
             res.json(result);
         } catch (error) {
             console.error('Satış işlemi hatası:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 error: 'Satış işlemi başarısız',
-                details: error.message 
+                details: error.message
             });
         }
     });
@@ -385,9 +405,9 @@ async function startServer() {
             res.json(transactions);
         } catch (error) {
             console.error('İşlem geçmişi hatası:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 error: 'İşlem geçmişi alınamadı',
-                details: error.message 
+                details: error.message
             });
         }
     });
@@ -400,9 +420,9 @@ async function startServer() {
             res.json(transactions);
         } catch (error) {
             console.error('Varlık işlemleri hatası:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 error: 'İşlemler alınamadı',
-                details: error.message 
+                details: error.message
             });
         }
     });
@@ -411,15 +431,15 @@ async function startServer() {
     app.delete('/api/v1/clear', (req, res) => {
         try {
             db.clearAllData();
-            res.json({ 
-                success: true, 
-                message: 'Tüm veriler silindi' 
+            res.json({
+                success: true,
+                message: 'Tüm veriler silindi'
             });
         } catch (error) {
             console.error('Veri temizleme hatası:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 error: 'Veriler temizlenemedi',
-                details: error.message 
+                details: error.message
             });
         }
     });
@@ -428,11 +448,11 @@ async function startServer() {
     app.get('/api/v1/integrity/check', (req, res) => {
         try {
             const results = db.checkDataIntegrity();
-            const totalIssues = 
+            const totalIssues =
                 results.orphanTransactions.length +
                 results.negativeQuantities.length +
                 results.inconsistentAverageCost.length;
-            
+
             res.json({
                 success: true,
                 totalIssues,
@@ -490,7 +510,7 @@ async function startServer() {
             if (!backupPath) {
                 return res.status(400).json({ error: 'Backup path gerekli' });
             }
-            
+
             db.restoreDatabase(backupPath);
             res.json({
                 success: true,
@@ -515,7 +535,7 @@ async function startServer() {
             const format = req.query.format || 'json';
             const assets = db.getAllAssets();
             const data = exportUtils.exportAssets(assets, format);
-            
+
             const filename = `assets-${new Date().toISOString().split('T')[0]}.${format}`;
             res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
             res.setHeader('Content-Type', format === 'csv' ? 'text/csv' : 'application/json');
@@ -535,7 +555,7 @@ async function startServer() {
             const format = req.query.format || 'json';
             const transactions = db.getAllTransactions();
             const data = exportUtils.exportTransactions(transactions, format);
-            
+
             const filename = `transactions-${new Date().toISOString().split('T')[0]}.${format}`;
             res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
             res.setHeader('Content-Type', format === 'csv' ? 'text/csv' : 'application/json');
@@ -557,7 +577,7 @@ async function startServer() {
             const assets = db.getAllAssets();
             const transactions = db.getAllTransactions();
             const data = exportUtils.exportSummary(summary, assets, transactions, format);
-            
+
             const filename = `portfolio-${new Date().toISOString().split('T')[0]}.${format}`;
             res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
             res.setHeader('Content-Type', format === 'csv' ? 'text/csv' : 'application/json');
@@ -578,7 +598,7 @@ async function startServer() {
             if (!data) {
                 return res.status(400).json({ error: 'Data gerekli' });
             }
-            
+
             let assets;
             try {
                 assets = exportUtils.importAssets(data, format || 'json');
@@ -597,11 +617,11 @@ async function startServer() {
                     }
                 });
             }
-            
+
             // Varlıkları ekle
             const imported = [];
             const errors = [];
-            
+
             assets.forEach(asset => {
                 try {
                     const created = db.createAsset(asset);
@@ -613,10 +633,10 @@ async function startServer() {
                     });
                 }
             });
-            
+
             invalidateCache('/api/v1/assets');
             invalidateCache('/api/v1/summary');
-            
+
             res.json({
                 success: true,
                 imported: imported.length,
@@ -686,11 +706,11 @@ async function startServer() {
         try {
             const { startDate, endDate } = req.query;
             let transactions = db.getAllTransactions();
-            
+
             if (startDate || endDate) {
                 transactions = reportUtils.filterByDateRange(transactions, startDate, endDate);
             }
-            
+
             const summary = reportUtils.getTransactionSummary(transactions);
             res.json(summary);
         } catch (error) {
@@ -761,6 +781,21 @@ async function startServer() {
             invalidateCache('/api/v1/assets');
             invalidateCache('/api/v1/summary');
 
+            // Başarılı güncelleme olursa socket ile bildir
+            if (results.updated > 0) {
+                // Tüm bağlı istemcilere yeni fiyatları gönder
+                const updatedAssets = db.getAllAssets();
+                const summary = db.getPortfolioSummary();
+
+                io.emit('price_update', {
+                    type: 'full_update',
+                    assets: updatedAssets,
+                    summary: summary,
+                    timestamp: new Date().toISOString()
+                });
+                console.log('📡 Socket: Fiyat güncellemesi yayınlandı');
+            }
+
             res.json({
                 success: true,
                 message: `${results.updated} varlık güncellendi`,
@@ -768,9 +803,9 @@ async function startServer() {
             });
         } catch (error) {
             console.error('❌ Fiyat güncelleme hatası:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 error: 'Fiyat güncelleme başarısız',
-                details: error.message 
+                details: error.message
             });
         }
     });
@@ -781,7 +816,7 @@ async function startServer() {
     });
 
     // Server başlat
-    const server = app.listen(PORT, () => {
+    server.listen(PORT, () => {
         console.log(`
 ╔════════════════════════════════════════════╗
 ║     💰 Portföy Uygulaması Çalışıyor!       ║

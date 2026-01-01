@@ -36,6 +36,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -129,6 +130,7 @@
                 transform: translateX(400px);
                 opacity: 0;
             }
+
             to {
                 transform: translateX(0);
                 opacity: 1;
@@ -140,6 +142,7 @@
                 transform: translateX(0);
                 opacity: 1;
             }
+
             to {
                 transform: translateX(400px);
                 opacity: 0;
@@ -161,8 +164,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Loading Overlay */
@@ -201,15 +209,24 @@
                 </h1>
             </div>
 
-            <!-- Dark/Light Mode Toggle Button -->
-            <button onclick="toggleTheme()"
-                class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/10 text-white w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg active:scale-95"
-                title="Temayı Değiştir">
-                <!-- Sun Icon (for Dark Mode) -->
-                <i class="fa-solid fa-sun text-yellow-300 text-lg hidden dark:block"></i>
-                <!-- Moon Icon (for Light Mode) -->
-                <i class="fa-solid fa-moon text-white text-lg dark:hidden"></i>
-            </button>
+            <!-- Connection Status & Dark Mode Toggle -->
+            <div class="flex items-center gap-3">
+                <!-- Connection Status Indicator -->
+                <div id="connectionStatus" class="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-2 rounded-full text-sm">
+                    <div id="connectionDot" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
+                    <span id="connectionText" class="text-white/80">Bağlanıyor...</span>
+                </div>
+
+                <!-- Dark/Light Mode Toggle Button -->
+                <button onclick="toggleTheme()"
+                    class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/10 text-white w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg active:scale-95"
+                    title="Temayı Değiştir">
+                    <!-- Sun Icon (for Dark Mode) -->
+                    <i class="fa-solid fa-sun text-yellow-300 text-lg hidden dark:block"></i>
+                    <!-- Moon Icon (for Light Mode) -->
+                    <i class="fa-solid fa-moon text-white text-lg dark:hidden"></i>
+                </button>
+            </div>
         </div>
 
         <!-- Toplam Bakiye Özeti -->
@@ -387,26 +404,32 @@
                         <span class="hidden sm:inline">Export</span>
                         <i class="fa-solid fa-chevron-down text-xs"></i>
                     </button>
-                    <div id="exportMenu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                    <div id="exportMenu"
+                        class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                         <div class="py-2">
-                            <button onclick="exportData('assets', 'json')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                            <button onclick="exportData('assets', 'json')"
+                                class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
                                 <i class="fa-solid fa-file-code text-blue-500"></i>
                                 <span>Varlıklar (JSON)</span>
                             </button>
-                            <button onclick="exportData('assets', 'csv')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                            <button onclick="exportData('assets', 'csv')"
+                                class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
                                 <i class="fa-solid fa-file-csv text-green-500"></i>
                                 <span>Varlıklar (CSV)</span>
                             </button>
-                            <button onclick="exportData('transactions', 'json')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                            <button onclick="exportData('transactions', 'json')"
+                                class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
                                 <i class="fa-solid fa-file-code text-blue-500"></i>
                                 <span>İşlemler (JSON)</span>
                             </button>
-                            <button onclick="exportData('transactions', 'csv')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                            <button onclick="exportData('transactions', 'csv')"
+                                class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
                                 <i class="fa-solid fa-file-csv text-green-500"></i>
                                 <span>İşlemler (CSV)</span>
                             </button>
                             <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-                            <button onclick="exportData('portfolio', 'json')" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
+                            <button onclick="exportData('portfolio', 'json')"
+                                class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2">
                                 <i class="fa-solid fa-briefcase text-purple-500"></i>
                                 <span>Tam Portföy (JSON)</span>
                             </button>
@@ -446,8 +469,8 @@
         <div class="flex gap-2 mb-4 overflow-x-auto">
             <button onclick="switchTab('portfolio')" id="tabPortfolio"
                 class="tab-btn active px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-blue-600 text-white whitespace-nowrap"></button>
-                <i class="fa-solid fa-wallet"></i>
-                <span>Portföy</span>
+            <i class="fa-solid fa-wallet"></i>
+            <span>Portföy</span>
             </button>
             <button onclick="switchTab('history')" id="tabHistory"
                 class="tab-btn px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 whitespace-nowrap">
@@ -541,7 +564,8 @@
         <!-- REPORTS TAB CONTENT -->
         <div id="reportsTab" class="hidden">
             <!-- Monthly Report -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden mb-6">
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden mb-6">
                 <div class="p-4 border-b border-gray-100 dark:border-gray-700">
                     <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                         <i class="fa-solid fa-calendar-days text-blue-500"></i>
@@ -561,14 +585,17 @@
                             </tr>
                         </thead>
                         <tbody id="monthlyReportBody" class="divide-y divide-gray-100 dark:divide-gray-700">
-                            <tr><td colspan="6" class="text-center py-8 text-gray-500">Yükleniyor...</td></tr>
+                            <tr>
+                                <td colspan="6" class="text-center py-8 text-gray-500">Yükleniyor...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
             <!-- Performance Report -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden mb-6">
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden mb-6">
                 <div class="p-4 border-b border-gray-100 dark:border-gray-700">
                     <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                         <i class="fa-solid fa-chart-line text-green-500"></i>
@@ -587,7 +614,9 @@
                             </tr>
                         </thead>
                         <tbody id="performanceReportBody" class="divide-y divide-gray-100 dark:divide-gray-700">
-                            <tr><td colspan="5" class="text-center py-8 text-gray-500">Yükleniyor...</td></tr>
+                            <tr>
+                                <td colspan="5" class="text-center py-8 text-gray-500">Yükleniyor...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -596,7 +625,8 @@
             <!-- Distribution & Risk Analysis -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <!-- Distribution -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
                     <div class="p-4 border-b border-gray-100 dark:border-gray-700">
                         <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                             <i class="fa-solid fa-chart-pie text-purple-500"></i>
@@ -609,7 +639,8 @@
                 </div>
 
                 <!-- Risk Analysis -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
                     <div class="p-4 border-b border-gray-100 dark:border-gray-700">
                         <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                             <i class="fa-solid fa-shield-halved text-red-500"></i>
@@ -625,7 +656,8 @@
             <!-- Top Performers -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Top Gainers -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
                     <div class="p-4 border-b border-gray-100 dark:border-gray-700">
                         <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                             <i class="fa-solid fa-arrow-trend-up text-green-500"></i>
@@ -638,7 +670,8 @@
                 </div>
 
                 <!-- Top Losers -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
                     <div class="p-4 border-b border-gray-100 dark:border-gray-700">
                         <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                             <i class="fa-solid fa-arrow-trend-down text-red-500"></i>
@@ -1013,15 +1046,18 @@
     </div>
 
     <!-- IMPORT MODAL -->
-    <div id="importModal" class="fixed inset-0 z-50 hidden" aria-labelledby="import-modal-title" role="dialog" aria-modal="true">
+    <div id="importModal" class="fixed inset-0 z-50 hidden" aria-labelledby="import-modal-title" role="dialog"
+        aria-modal="true">
         <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop"
             onclick="toggleModal('importModal')"></div>
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
             <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <div class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95 modal-panel">
+                <div
+                    class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95 modal-panel">
                     <div class="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white flex items-center gap-2">
+                            <h3
+                                class="text-base font-semibold leading-6 text-gray-900 dark:text-white flex items-center gap-2">
                                 <i class="fa-solid fa-upload text-indigo-500"></i>
                                 Varlık Import Et
                             </h3>
@@ -1054,10 +1090,12 @@
                             </div>
 
                             <!-- Info -->
-                            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                            <div
+                                class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                                 <p class="text-sm text-blue-800 dark:text-blue-300">
                                     <i class="fa-solid fa-info-circle mr-1"></i>
-                                    JSON veya CSV formatında varlık listesi yükleyebilirsiniz. Duplicate varlıklar otomatik olarak atlanır.
+                                    JSON veya CSV formatında varlık listesi yükleyebilirsiniz. Duplicate varlıklar
+                                    otomatik olarak atlanır.
                                 </p>
                             </div>
                         </div>

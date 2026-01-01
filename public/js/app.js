@@ -1452,8 +1452,94 @@ function renderTopPerformers(data) {
 }
 
 // =====================
-// INIT
+// CONNECTION STATUS MANAGEMENT
 // =====================
+function updateConnectionStatus(status, message) {
+    const dot = document.getElementById('connectionDot');
+    const text = document.getElementById('connectionText');
+    
+    if (!dot || !text) return;
+    
+    switch(status) {
+        case 'connected':
+            dot.className = 'w-2 h-2 rounded-full bg-green-400';
+            text.textContent = 'Canlı';
+            break;
+        case 'disconnected':
+            dot.className = 'w-2 h-2 rounded-full bg-red-400';
+            text.textContent = 'Çevrimdışı';
+            break;
+        case 'connecting':
+            dot.className = 'w-2 h-2 rounded-full bg-yellow-400 animate-pulse';
+            text.textContent = 'Bağlanıyor...';
+            break;
+        case 'error':
+            dot.className = 'w-2 h-2 rounded-full bg-orange-400 animate-pulse';
+            text.textContent = 'Hata';
+            break;
+    }
+}
+
+// =====================
+// INIT & SOCKET.IO
+// =====================
+const socket = io();
+
+// Connection status
+let isConnected = false;
+
+// Connection events
+socket.on('connect', () => {
+    console.log('✅ Socket bağlandı:', socket.id);
+    isConnected = true;
+    updateConnectionStatus('connected');
+    showToast('Canlı güncellemeler aktif', 'success', 2000);
+});
+
+socket.on('disconnect', (reason) => {
+    console.log('❌ Socket bağlantısı kesildi:', reason);
+    isConnected = false;
+    updateConnectionStatus('disconnected');
+    showToast('Canlı güncellemeler devre dışı', 'warning', 3000);
+});
+
+socket.on('connect_error', (error) => {
+    console.error('❌ Socket bağlantı hatası:', error);
+    updateConnectionStatus('error');
+    showToast('Bağlantı hatası - Yeniden deneniyor...', 'error', 4000);
+});
+
+socket.on('reconnect', (attemptNumber) => {
+    console.log('🔄 Socket yeniden bağlandı, deneme:', attemptNumber);
+    isConnected = true;
+    updateConnectionStatus('connected');
+    showToast('Bağlantı yeniden kuruldu', 'success', 2000);
+});
+
+// Listen for price updates
+socket.on('price_update', (data) => {
+    if (data.type === 'full_update') {
+        console.log('📡 Socket: Yeni fiyatlar alındı', data.timestamp);
+
+        // Update variables
+        assets = data.assets;
+
+        // Calculate new derived values
+        totalValue = assets.reduce((sum, asset) => sum + (asset.quantity * asset.current_price), 0);
+        totalCost = assets.reduce((sum, asset) => sum + (asset.quantity * asset.avg_cost), 0);
+        totalProfitLoss = totalValue - totalCost;
+
+        // Update UI
+        updateSummaryCards();
+        renderAssetsTable();
+        updateCharts();
+
+        // Flash effect with connection status
+        const message = isConnected ? 'Fiyatlar canlı güncellendi' : 'Fiyatlar güncellendi';
+        showToast(message, 'success', 2000);
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchAssets();
 });
