@@ -212,7 +212,8 @@
             <!-- Connection Status & Dark Mode Toggle -->
             <div class="flex items-center gap-3">
                 <!-- Connection Status Indicator -->
-                <div id="connectionStatus" class="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-2 rounded-full text-sm">
+                <div id="connectionStatus"
+                    class="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-2 rounded-full text-sm">
                     <div id="connectionDot" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
                     <span id="connectionText" class="text-white/80">Bağlanıyor...</span>
                 </div>
@@ -325,6 +326,37 @@
                     </div>
                     <div id="typeLegend" class="w-full text-sm">
                         <!-- Dinamik olarak render edilecek -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PORTFOLIO HISTORY CHART SECTION -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6 mb-6 transition-colors duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-gray-800 dark:text-white brand-font flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-emerald-500"></i>
+                    Portföy Değer Geçmişi
+                </h2>
+                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <div class="flex items-center gap-1">
+                        <div class="w-3 h-0.5 bg-emerald-500 rounded"></div>
+                        <span>Toplam Değer</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-3 h-0.5 border-t-2 border-dashed border-blue-500"></div>
+                        <span>Net Yatırım</span>
+                    </div>
+                </div>
+            </div>
+            <div class="relative" style="height: 300px;">
+                <canvas id="historyChart"></canvas>
+                <div id="historyChartEmptyState"
+                    class="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                    <div class="text-center">
+                        <i class="fa-solid fa-chart-line text-4xl mb-3 opacity-30"></i>
+                        <p class="text-sm mb-1">Portföy geçmişi yok</p>
+                        <p class="text-xs opacity-70">İşlem yaparak geçmiş oluşturun</p>
                     </div>
                 </div>
             </div>
@@ -622,67 +654,50 @@
                 </div>
             </div>
 
-            <!-- Distribution & Risk Analysis -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <!-- Distribution -->
-                <div
-                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-                    <div class="p-4 border-b border-gray-100 dark:border-gray-700">
-                        <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                            <i class="fa-solid fa-chart-pie text-purple-500"></i>
-                            Tür Dağılımı
-                        </h3>
-                    </div>
-                    <div id="distributionReport" class="p-4 space-y-3">
-                        <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
-                    </div>
-                </div>
+            class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700
+            overflow-hidden">
+            <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-red-500"></i>
+                    Risk Analizi
+                </h3>
+            </div>
+            <div id="riskAnalysis" class="p-4">
+                <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
+            </div>
+        </div>
+        </div>
 
-                <!-- Risk Analysis -->
-                <div
-                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-                    <div class="p-4 border-b border-gray-100 dark:border-gray-700">
-                        <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                            <i class="fa-solid fa-shield-halved text-red-500"></i>
-                            Risk Analizi
-                        </h3>
-                    </div>
-                    <div id="riskAnalysis" class="p-4">
-                        <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
-                    </div>
+        <!-- Top Performers -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Top Gainers -->
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                    <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-trend-up text-green-500"></i>
+                        En Çok Kazandıranlar
+                    </h3>
+                </div>
+                <div id="topGainers" class="p-4 space-y-3">
+                    <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
                 </div>
             </div>
 
-            <!-- Top Performers -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Top Gainers -->
-                <div
-                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-                    <div class="p-4 border-b border-gray-100 dark:border-gray-700">
-                        <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                            <i class="fa-solid fa-arrow-trend-up text-green-500"></i>
-                            En Çok Kazandıranlar
-                        </h3>
-                    </div>
-                    <div id="topGainers" class="p-4 space-y-3">
-                        <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
-                    </div>
+            <!-- Top Losers -->
+            <div
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                    <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-trend-down text-red-500"></i>
+                        En Çok Kayb Ettirenler
+                    </h3>
                 </div>
-
-                <!-- Top Losers -->
-                <div
-                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-                    <div class="p-4 border-b border-gray-100 dark:border-gray-700">
-                        <h3 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                            <i class="fa-solid fa-arrow-trend-down text-red-500"></i>
-                            En Çok Kayb Ettirenler
-                        </h3>
-                    </div>
-                    <div id="topLosers" class="p-4 space-y-3">
-                        <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
-                    </div>
+                <div id="topLosers" class="p-4 space-y-3">
+                    <p class="text-center py-8 text-gray-500">Yükleniyor...</p>
                 </div>
             </div>
+        </div>
         </div>
     </main>
 

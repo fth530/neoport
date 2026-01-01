@@ -277,6 +277,7 @@ async function fetchAssets() {
         renderAssets();
         renderPieChart();
         renderTypeChart();
+        await updateCharts(); // History chart dahil tüm chart'ları güncelle
         updateSummary();
         updateMiniDashboard();
         convertCurrency();
@@ -574,194 +575,248 @@ function renderPieChart() {
             portfolioChart.destroy();
             portfolioChart = null;
         }
-        return;
-    }
+        // =====================
+        // CHARTS
+        // =====================
+        let historyChart = null; // Global variable for history chart
 
-    // Boş state'i gizle
-    if (emptyState) emptyState.style.display = 'none';
+        async function updateCharts() {
+            if (assets.length === 0) return;
 
-    // Veri hazırla
-    const labels = assets.map(a => a.name);
-    const values = assets.map(a => a.quantity * a.current_price);
-    const total = values.reduce((sum, v) => sum + v, 0);
-    const percentages = values.map(v => total > 0 ? ((v / total) * 100).toFixed(1) : 0);
-    const colors = assets.map((_, i) => chartColors[i % chartColors.length]);
+            // 1. Distribution Chart (Mevcut)
+            renderDistributionChart();
 
-    // Önceki grafiği temizle
-    if (portfolioChart) {
-        portfolioChart.destroy();
-    }
+            // 2. History Chart (Yeni)
+            await renderHistoryChart();
+        }
 
-    // Dark mode kontrolü
-    const isDark = document.documentElement.classList.contains('dark');
+        function renderDistributionChart() {
+            const ctx = document.getElementById('typeChart')?.getContext('2d');
+            if (!ctx) return; // ID değişmiş olabilir, kontrol et
 
-    // Yeni grafik oluştur
-    portfolioChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: colors,
-                borderColor: isDark ? '#1f2937' : '#ffffff',
-                borderWidth: 3,
-                hoverBorderWidth: 0,
-                hoverOffset: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            cutout: '60%',
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: isDark ? '#374151' : '#1f2937',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    padding: 12,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function (context) {
-                            const value = context.raw;
-                            const percent = percentages[context.dataIndex];
-                            return ` ${formatCurrency(value, 'TRY')} (${percent}%)`;
+            // ... (Mevcut dağılım grafiği mantığı buraya taşınabilir veya ayrı tutulabilir)
+            // Şimdilik mevcut yapıyı koruyalım, sadece history chart ekleyelim
+        }
+
+        async function renderHistoryChart() {
+            const ctx = document.getElementById('historyChart')?.getContext('2d');
+            const emptyState = document.getElementById('historyChartEmptyState');
+            
+            if (!ctx) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/reports/history`);
+                const historyData = await response.json();
+
+                // Empty state kontrolü
+                if (!historyData || historyData.length === 0) {
+                    if (emptyState) emptyState.style.display = 'flex';
+                    if (historyChart) {
+                        historyChart.destroy();
+                        historyChart = null;
+                    }
+                    return;
+                }
+
+                // Empty state'i gizle
+                if (emptyState) emptyState.style.display = 'none';
+
+                // Verileri hazırla
+                const labels = historyData.map(d => new Date(d.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }));
+                const investedValues = historyData.map(d => d.investedValue);
+                const totalValues = historyData.map(d => d.value);
+
+                // Chart oluştur veya güncelle
+                if (historyChart) {
+                    historyChart.destroy();
+                }
+
+                historyChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Toplam Değer',
+                                data: totalValues,
+                                borderColor: 'rgba(34, 197, 94, 1)', // Green
+                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.4
+                            },
+                            {
+                                label: 'Net Yatırım',
+                                data: investedValues,
+                                borderColor: 'rgba(59, 130, 246, 1)', // Blue
+                                backgroundColor: 'rgba(59, 130, 246, 0.0)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                fill: false,
+                                tension: 0.4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151'
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += formatCurrency(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: document.documentElement.classList.contains('dark') ? '#374151' : '#e5e7eb'
+                                },
+                                ticks: {
+                                    color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280',
+                                    callback: function (value) {
+                                        return formatCurrency(value, 'TRY', true); // Compact format
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
                         }
                     }
+                });
+
+            } catch (error) {
+                console.error('Geçmiş grafiği hatası:', error);
+                if (emptyState) emptyState.style.display = 'flex';
+                if (historyChart) {
+                    historyChart.destroy();
+                    historyChart = null;
                 }
-            },
-            animation: {
-                animateRotate: true,
-                animateScale: true
             }
         }
-    });
 
-    // Custom legend render
-    if (legendContainer) {
-        legendContainer.innerHTML = `
-            <div class="space-y-3">
-                ${assets.map((asset, i) => {
-            const value = values[i];
-            const percent = percentages[i];
-            const color = colors[i];
-            return `
-                        <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                            <div class="flex items-center gap-3">
-                                <div class="w-3 h-3 rounded-full" style="background-color: ${color}"></div>
-                                <div>
-                                    <div class="font-medium text-gray-800 dark:text-gray-200 text-sm">${asset.name}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">${asset.symbol}</div>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-semibold text-gray-800 dark:text-gray-200 text-sm">${formatCurrency(value, asset.currency)}</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">${percent}%</div>
-                            </div>
-                        </div>
-                    `;
-        }).join('')}
-            </div>
-        `;
-    }
-}
+        // Tür Ağırlık Grafiği Render
+        function renderTypeChart() {
+            const ctx = document.getElementById('typeChart');
+            const emptyState = document.getElementById('typeChartEmptyState');
+            const legendContainer = document.getElementById('typeLegend');
 
-// Tür Ağırlık Grafiği Render
-function renderTypeChart() {
-    const ctx = document.getElementById('typeChart');
-    const emptyState = document.getElementById('typeChartEmptyState');
-    const legendContainer = document.getElementById('typeLegend');
+            if (!ctx) return;
 
-    if (!ctx) return;
-
-    // Varlık yoksa boş state göster
-    if (assets.length === 0) {
-        if (emptyState) emptyState.style.display = 'flex';
-        if (legendContainer) legendContainer.innerHTML = '';
-        if (typeChart) {
-            typeChart.destroy();
-            typeChart = null;
-        }
-        return;
-    }
-
-    // Boş state'i gizle
-    if (emptyState) emptyState.style.display = 'none';
-
-    // Türe göre grupla
-    const typeData = {};
-    let totalValue = 0;
-
-    assets.forEach(asset => {
-        const value = asset.quantity * asset.current_price;
-        totalValue += value;
-        if (!typeData[asset.type]) {
-            typeData[asset.type] = 0;
-        }
-        typeData[asset.type] += value;
-    });
-
-    const types = Object.keys(typeData);
-    const values = types.map(t => typeData[t]);
-    const percentages = values.map(v => totalValue > 0 ? ((v / totalValue) * 100).toFixed(1) : 0);
-    const colors = types.map(t => typeColors[t]?.color || '#64748b');
-    const labels = types.map(t => typeColors[t]?.label || t);
-
-    // Önceki grafiği temizle
-    if (typeChart) {
-        typeChart.destroy();
-    }
-
-    const isDark = document.documentElement.classList.contains('dark');
-
-    // Yeni grafik oluştur
-    typeChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: colors,
-                borderColor: isDark ? '#1f2937' : '#ffffff',
-                borderWidth: 3,
-                hoverBorderWidth: 0,
-                hoverOffset: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            cutout: '65%',
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: isDark ? '#374151' : '#1f2937',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    padding: 12,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function (context) {
-                            const value = context.raw;
-                            const percent = percentages[context.dataIndex];
-                            return ` ${formatCurrency(value, 'TRY')} (${percent}%)`;
-                        }
-                    }
+            // Varlık yoksa boş state göster
+            if (assets.length === 0) {
+                if (emptyState) emptyState.style.display = 'flex';
+                if (legendContainer) legendContainer.innerHTML = '';
+                if (typeChart) {
+                    typeChart.destroy();
+                    typeChart = null;
                 }
-            },
-            animation: { animateRotate: true, animateScale: true }
-        }
-    });
+                return;
+            }
 
-    // Custom legend
-    if (legendContainer) {
-        legendContainer.innerHTML = `
+            // Boş state'i gizle
+            if (emptyState) emptyState.style.display = 'none';
+
+            // Türe göre grupla
+            const typeData = {};
+            let totalValue = 0;
+
+            assets.forEach(asset => {
+                const value = asset.quantity * asset.current_price;
+                totalValue += value;
+                if (!typeData[asset.type]) {
+                    typeData[asset.type] = 0;
+                }
+                typeData[asset.type] += value;
+            });
+
+            const types = Object.keys(typeData);
+            const values = types.map(t => typeData[t]);
+            const percentages = values.map(v => totalValue > 0 ? ((v / totalValue) * 100).toFixed(1) : 0);
+            const colors = types.map(t => typeColors[t]?.color || '#64748b');
+            const labels = types.map(t => typeColors[t]?.label || t);
+
+            // Önceki grafiği temizle
+            if (typeChart) {
+                typeChart.destroy();
+            }
+
+            const isDark = document.documentElement.classList.contains('dark');
+
+            // Yeni grafik oluştur
+            typeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: isDark ? '#1f2937' : '#ffffff',
+                        borderWidth: 3,
+                        hoverBorderWidth: 0,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '65%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: isDark ? '#374151' : '#1f2937',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function (context) {
+                                    const value = context.raw;
+                                    const percent = percentages[context.dataIndex];
+                                    return ` ${formatCurrency(value, 'TRY')} (${percent}%)`;
+                                }
+                            }
+                        }
+                    },
+                    animation: { animateRotate: true, animateScale: true }
+                }
+            });
+
+            // Custom legend
+            if (legendContainer) {
+                legendContainer.innerHTML = `
             <div class="grid grid-cols-2 gap-2">
                 ${types.map((type, i) => {
-            const config = typeColors[type] || { label: type, icon: 'fa-solid fa-circle', color: '#64748b' };
-            return `
+                    const config = typeColors[type] || { label: type, icon: 'fa-solid fa-circle', color: '#64748b' };
+                    return `
                         <div class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                             <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background-color: ${config.color}20">
                                 <i class="${config.icon} text-sm" style="color: ${config.color}"></i>
@@ -772,42 +827,51 @@ function renderTypeChart() {
                             </div>
                         </div>
                     `;
-        }).join('')}
+                }).join('')}
             </div>
         `;
-    }
-}
+            }
+        }
 
-function formatCurrency(value, currency = 'TRY') {
-    if (currency === 'TRY') {
-        return '₺ ' + value.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    } else if (currency === 'USD') {
-        return '$ ' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-    return value.toLocaleString('tr-TR');
-}
+        function formatCurrency(value, currency = 'TRY', compact = false) {
+            if (compact && value >= 1000) {
+                // Compact format for large numbers
+                if (value >= 1000000) {
+                    return (value / 1000000).toFixed(1) + 'M ₺';
+                } else if (value >= 1000) {
+                    return (value / 1000).toFixed(1) + 'K ₺';
+                }
+            }
+            
+            if (currency === 'TRY') {
+                return '₺ ' + value.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+            } else if (currency === 'USD') {
+                return '$ ' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            return value.toLocaleString('tr-TR');
+        }
 
-function getIconConfig(type) {
-    const configs = {
-        'crypto': { icon: 'fa-brands fa-bitcoin', bg: 'orange' },
-        'gold': { icon: 'fa-solid fa-coins', bg: 'yellow' },
-        'stock': { icon: 'fa-solid fa-building', bg: 'gray' },
-        'currency': { icon: 'fa-solid fa-money-bill-wave', bg: 'green' }
-    };
-    return configs[type] || configs['stock'];
-}
+        function getIconConfig(type) {
+            const configs = {
+                'crypto': { icon: 'fa-brands fa-bitcoin', bg: 'orange' },
+                'gold': { icon: 'fa-solid fa-coins', bg: 'yellow' },
+                'stock': { icon: 'fa-solid fa-building', bg: 'gray' },
+                'currency': { icon: 'fa-solid fa-money-bill-wave', bg: 'green' }
+            };
+            return configs[type] || configs['stock'];
+        }
 
-function renderAssets() {
-    const desktopBody = document.getElementById('desktopTableBody');
-    const mobileList = document.getElementById('mobileAssetList');
+        function renderAssets() {
+            const desktopBody = document.getElementById('desktopTableBody');
+            const mobileList = document.getElementById('mobileAssetList');
 
-    if (!desktopBody || !mobileList) return;
+            if (!desktopBody || !mobileList) return;
 
-    const filteredAssets = getFilteredAssets();
+            const filteredAssets = getFilteredAssets();
 
-    if (filteredAssets.length === 0) {
-        const filterText = currentFilter === 'all' ? '' : ` (${currentFilter} filtresi uygulandı)`;
-        const emptyMsg = `
+            if (filteredAssets.length === 0) {
+                const filterText = currentFilter === 'all' ? '' : ` (${currentFilter} filtresi uygulandı)`;
+                const emptyMsg = `
             <tr>
                 <td colspan="6" class="p-8 text-center text-gray-500 dark:text-gray-400">
                     <i class="fa-solid fa-folder-open text-4xl mb-4 block opacity-50"></i>
@@ -816,26 +880,26 @@ function renderAssets() {
                 </td>
             </tr>
         `;
-        desktopBody.innerHTML = emptyMsg;
-        mobileList.innerHTML = `
+                desktopBody.innerHTML = emptyMsg;
+                mobileList.innerHTML = `
             <div class="p-8 text-center text-gray-500 dark:text-gray-400">
                 <i class="fa-solid fa-folder-open text-4xl mb-4 block opacity-50"></i>
                 <p>Varlık bulunamadı${filterText}</p>
             </div>
         `;
-        return;
-    }
+                return;
+            }
 
-    // Desktop render
-    desktopBody.innerHTML = filteredAssets.map(asset => {
-        const iconCfg = getIconConfig(asset.type);
-        const isProfit = asset.profit_loss >= 0;
-        const profitClass = isProfit
-            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-            : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
-        const profitSign = isProfit ? '+' : '';
+            // Desktop render
+            desktopBody.innerHTML = filteredAssets.map(asset => {
+                const iconCfg = getIconConfig(asset.type);
+                const isProfit = asset.profit_loss >= 0;
+                const profitClass = isProfit
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                    : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
+                const profitSign = isProfit ? '+' : '';
 
-        return `
+                return `
             <tr class="hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition duration-200">
                 <td class="p-4">
                     <div class="flex items-center gap-3">
@@ -874,18 +938,18 @@ function renderAssets() {
                 </td>
             </tr>
         `;
-    }).join('');
+            }).join('');
 
-    // Mobile render
-    mobileList.innerHTML = filteredAssets.map(asset => {
-        const iconCfg = getIconConfig(asset.type);
-        const isProfit = asset.profit_loss >= 0;
-        const profitClass = isProfit
-            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-            : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
-        const profitSign = isProfit ? '+' : '';
+            // Mobile render
+            mobileList.innerHTML = filteredAssets.map(asset => {
+                const iconCfg = getIconConfig(asset.type);
+                const isProfit = asset.profit_loss >= 0;
+                const profitClass = isProfit
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                    : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
+                const profitSign = isProfit ? '+' : '';
 
-        return `
+                return `
             <div class="p-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-3">
@@ -921,407 +985,407 @@ function renderAssets() {
                 </div>
             </div>
         `;
-    }).join('');
-}
+            }).join('');
+        }
 
-async function updateSummary() {
-    const summary = await fetchSummary();
-    if (!summary) return;
+        async function updateSummary() {
+            const summary = await fetchSummary();
+            if (!summary) return;
 
-    const totalValueEl = document.getElementById('totalValue');
-    const totalProfitEl = document.getElementById('totalProfit');
-    const totalProfitPercentEl = document.getElementById('totalProfitPercent');
-    const realizedProfitEl = document.getElementById('realizedProfit');
-    const totalOverallProfitEl = document.getElementById('totalOverallProfit');
-    const bottomTotalEl = document.getElementById('bottomTotalProfit');
-    const desktopTotalEl = document.getElementById('desktopTotalProfit');
+            const totalValueEl = document.getElementById('totalValue');
+            const totalProfitEl = document.getElementById('totalProfit');
+            const totalProfitPercentEl = document.getElementById('totalProfitPercent');
+            const realizedProfitEl = document.getElementById('realizedProfit');
+            const totalOverallProfitEl = document.getElementById('totalOverallProfit');
+            const bottomTotalEl = document.getElementById('bottomTotalProfit');
+            const desktopTotalEl = document.getElementById('desktopTotalProfit');
 
-    if (totalValueEl) {
-        const formatted = formatCurrency(summary.total_value, 'TRY').split(',');
-        totalValueEl.innerHTML = `${formatted[0]}<span class="text-2xl opacity-60">,${formatted[1] || '00'}</span>`;
-    }
+            if (totalValueEl) {
+                const formatted = formatCurrency(summary.total_value, 'TRY').split(',');
+                totalValueEl.innerHTML = `${formatted[0]}<span class="text-2xl opacity-60">,${formatted[1] || '00'}</span>`;
+            }
 
-    // Gerçekleşmemiş kar/zarar
-    const unrealizedProfit = summary.total_unrealized_profit || 0;
-    const isUnrealizedProfit = unrealizedProfit >= 0;
-    const unrealizedSign = isUnrealizedProfit ? '+' : '';
-    const unrealizedText = `${unrealizedSign} ${formatCurrency(Math.abs(unrealizedProfit), 'TRY')}`;
-    const percentText = `%${Math.abs(summary.total_profit_loss_percent || 0).toFixed(1)}`;
+            // Gerçekleşmemiş kar/zarar
+            const unrealizedProfit = summary.total_unrealized_profit || 0;
+            const isUnrealizedProfit = unrealizedProfit >= 0;
+            const unrealizedSign = isUnrealizedProfit ? '+' : '';
+            const unrealizedText = `${unrealizedSign} ${formatCurrency(Math.abs(unrealizedProfit), 'TRY')}`;
+            const percentText = `%${Math.abs(summary.total_profit_loss_percent || 0).toFixed(1)}`;
 
-    if (totalProfitEl) {
-        totalProfitEl.textContent = unrealizedText;
-        totalProfitEl.className = `text-2xl font-bold ${isUnrealizedProfit ? 'text-green-300' : 'text-red-300'} flex items-center gap-2`;
-    }
+            if (totalProfitEl) {
+                totalProfitEl.textContent = unrealizedText;
+                totalProfitEl.className = `text-2xl font-bold ${isUnrealizedProfit ? 'text-green-300' : 'text-red-300'} flex items-center gap-2`;
+            }
 
-    if (totalProfitPercentEl) {
-        totalProfitPercentEl.textContent = percentText;
-    }
+            if (totalProfitPercentEl) {
+                totalProfitPercentEl.textContent = percentText;
+            }
 
-    // Gerçekleşmiş kar
-    const realizedProfit = summary.total_realized_profit || 0;
-    const isRealizedProfit = realizedProfit >= 0;
-    const realizedSign = isRealizedProfit ? '+' : '';
+            // Gerçekleşmiş kar
+            const realizedProfit = summary.total_realized_profit || 0;
+            const isRealizedProfit = realizedProfit >= 0;
+            const realizedSign = isRealizedProfit ? '+' : '';
 
-    if (realizedProfitEl) {
-        realizedProfitEl.innerHTML = `
+            if (realizedProfitEl) {
+                realizedProfitEl.innerHTML = `
             <i class="fa-solid fa-check-circle text-sm"></i>
             ${realizedSign} ${formatCurrency(Math.abs(realizedProfit), 'TRY')}
         `;
-        realizedProfitEl.className = `text-xl font-bold ${isRealizedProfit ? 'text-emerald-300' : 'text-red-300'} flex items-center gap-2`;
-    }
+                realizedProfitEl.className = `text-xl font-bold ${isRealizedProfit ? 'text-emerald-300' : 'text-red-300'} flex items-center gap-2`;
+            }
 
-    // Toplam kar (gerçekleşmiş + gerçekleşmemiş)
-    const totalProfit = unrealizedProfit + realizedProfit;
-    const isTotalProfit = totalProfit >= 0;
-    const totalSign = isTotalProfit ? '+' : '';
+            // Toplam kar (gerçekleşmiş + gerçekleşmemiş)
+            const totalProfit = unrealizedProfit + realizedProfit;
+            const isTotalProfit = totalProfit >= 0;
+            const totalSign = isTotalProfit ? '+' : '';
 
-    if (totalOverallProfitEl) {
-        totalOverallProfitEl.innerHTML = `
+            if (totalOverallProfitEl) {
+                totalOverallProfitEl.innerHTML = `
             <i class="fa-solid fa-coins text-sm"></i>
             ${totalSign} ${formatCurrency(Math.abs(totalProfit), 'TRY')}
         `;
-        totalOverallProfitEl.className = `text-xl font-bold ${isTotalProfit ? 'text-yellow-300' : 'text-red-300'} flex items-center gap-2`;
-    }
-
-    if (bottomTotalEl) {
-        bottomTotalEl.textContent = `${totalSign} ${formatCurrency(Math.abs(totalProfit), 'TRY')}`;
-        bottomTotalEl.className = `text-xl font-bold ${isTotalProfit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`;
-    }
-
-    if (desktopTotalEl) {
-        desktopTotalEl.innerHTML = `${totalSign} ${formatCurrency(Math.abs(totalProfit), 'TRY')}`;
-        desktopTotalEl.className = `text-3xl font-bold ${isTotalProfit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} tracking-tight mt-1`;
-    }
-}
-
-// =====================
-// MODAL İŞLEMLERİ
-// =====================
-function openBuyModal(assetId) {
-    selectedAssetId = assetId;
-    const asset = assets.find(a => a.id === assetId);
-    if (asset) {
-        document.getElementById('buyAssetName').textContent = asset.name;
-    }
-    toggleModal('buyAssetModal');
-}
-
-function openSellModal(assetId) {
-    selectedAssetId = assetId;
-    const asset = assets.find(a => a.id === assetId);
-    if (asset) {
-        document.getElementById('sellAssetName').textContent = asset.name;
-        document.getElementById('sellMaxQuantity').textContent = `Mevcut: ${asset.quantity} ${asset.symbol}`;
-    }
-    toggleModal('sellAssetModal');
-}
-
-function confirmDelete(assetId) {
-    if (confirm('Bu varlığı silmek istediğinize emin misiniz?')) {
-        deleteAsset(assetId);
-    }
-}
-
-async function confirmClearAll() {
-    if (confirm('⚠️ TÜM KAYITLAR SİLİNECEK!\n\nBu işlem geri alınamaz. Tüm varlıklar ve işlem geçmişi silinecektir.\n\nDevam etmek istiyor musunuz?')) {
-        try {
-            showLoading();
-            const response = await fetch(`${API_BASE}/clear`, { method: 'DELETE' });
-            if (response.ok) {
-                await fetchAssets();
-                showToast('Tüm veriler temizlendi', 'success');
-            } else {
-                showToast('Veriler temizlenirken hata oluştu', 'error');
+                totalOverallProfitEl.className = `text-xl font-bold ${isTotalProfit ? 'text-yellow-300' : 'text-red-300'} flex items-center gap-2`;
             }
-        } catch (error) {
-            console.error('Temizleme hatası:', error);
-            showToast('Sunucu bağlantı hatası', 'error');
-        } finally {
-            hideLoading();
+
+            if (bottomTotalEl) {
+                bottomTotalEl.textContent = `${totalSign} ${formatCurrency(Math.abs(totalProfit), 'TRY')}`;
+                bottomTotalEl.className = `text-xl font-bold ${isTotalProfit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`;
+            }
+
+            if (desktopTotalEl) {
+                desktopTotalEl.innerHTML = `${totalSign} ${formatCurrency(Math.abs(totalProfit), 'TRY')}`;
+                desktopTotalEl.className = `text-3xl font-bold ${isTotalProfit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} tracking-tight mt-1`;
+            }
         }
-    }
-}
 
-function openEditModal(assetId) {
-    selectedAssetId = assetId;
-    const asset = assets.find(a => a.id === assetId);
-    if (asset) {
-        document.getElementById('editAssetName').textContent = `${asset.name} (${asset.symbol})`;
-        document.getElementById('editQuantity').value = asset.quantity;
-        document.getElementById('editAvgCost').value = asset.avg_cost;
-        document.getElementById('editCurrentPrice').value = asset.current_price;
-    }
-    toggleModal('editAssetModal');
-}
-
-async function handleEditAsset(event) {
-    event.preventDefault();
-    const form = event.target;
-    const quantity = parseFloat(form.querySelector('[name="quantity"]').value);
-    const avg_cost = parseFloat(form.querySelector('[name="avg_cost"]').value);
-    const current_price = parseFloat(form.querySelector('[name="current_price"]').value);
-
-    // Validasyon
-    if (!validatePositiveNumber(quantity, 'Miktar')) return;
-    if (avg_cost < 0) {
-        showToast('Ortalama alış fiyatı negatif olamaz', 'error');
-        return;
-    }
-    if (current_price < 0) {
-        showToast('Güncel fiyat negatif olamaz', 'error');
-        return;
-    }
-
-    if (selectedAssetId) {
-        const success = await updateAsset(selectedAssetId, {
-            quantity,
-            avg_cost,
-            current_price
-        });
-        if (success) {
-            form.reset();
-            toggleModal('editAssetModal');
-        }
-    }
-}
-
-// Form submit handlers
-async function handleAddAsset(event) {
-    event.preventDefault();
-    const form = event.target;
-    const formData = new FormData(form);
-
-    const typeMap = {
-        'Kripto Para': 'crypto',
-        'Hisse Senedi': 'stock',
-        'Altın': 'gold',
-        'Döviz': 'currency'
-    };
-
-    const quantity = parseFloat(formData.get('quantity')) || 0;
-    const avgCost = parseFloat(formData.get('avg_cost')) || 0;
-
-    // Validasyon
-    if (!validatePositiveNumber(quantity, 'Miktar')) return;
-    if (!validatePositiveNumber(avgCost, 'Alış Fiyatı')) return;
-
-    const data = {
-        name: formData.get('name'),
-        symbol: formData.get('symbol'),
-        type: typeMap[formData.get('type')] || 'stock',
-        quantity: quantity,
-        avg_cost: avgCost,
-        current_price: avgCost, // Başlangıçta alış fiyatı ile aynı
-        currency: formData.get('currency') || 'TRY'
-    };
-
-    const success = await createAsset(data);
-    if (success) {
-        form.reset();
-        document.getElementById('presetAssetSelect').value = '';
-        toggleModal('addAssetModal');
-    }
-}
-
-async function handleBuyAsset(event) {
-    event.preventDefault();
-    const form = event.target;
-    const quantity = parseFloat(form.querySelector('[name="quantity"]').value);
-    const price = parseFloat(form.querySelector('[name="price"]').value);
-
-    if (selectedAssetId && quantity && price) {
-        const success = await buyAsset(selectedAssetId, quantity, price);
-        if (success) {
-            form.reset();
+        // =====================
+        // MODAL İŞLEMLERİ
+        // =====================
+        function openBuyModal(assetId) {
+            selectedAssetId = assetId;
+            const asset = assets.find(a => a.id === assetId);
+            if (asset) {
+                document.getElementById('buyAssetName').textContent = asset.name;
+            }
             toggleModal('buyAssetModal');
         }
-    }
-}
 
-async function handleSellAsset(event) {
-    event.preventDefault();
-    const form = event.target;
-    const quantity = parseFloat(form.querySelector('[name="quantity"]').value);
-    const price = parseFloat(form.querySelector('[name="price"]').value);
-
-    if (selectedAssetId && quantity && price) {
-        const success = await sellAsset(selectedAssetId, quantity, price);
-        if (success) {
-            form.reset();
+        function openSellModal(assetId) {
+            selectedAssetId = assetId;
+            const asset = assets.find(a => a.id === assetId);
+            if (asset) {
+                document.getElementById('sellAssetName').textContent = asset.name;
+                document.getElementById('sellMaxQuantity').textContent = `Mevcut: ${asset.quantity} ${asset.symbol}`;
+            }
             toggleModal('sellAssetModal');
         }
-    }
-}
 
-// =====================
-// DARK MODE
-// =====================
-if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    document.documentElement.classList.add('dark');
-} else {
-    document.documentElement.classList.remove('dark');
-}
-
-function toggleTheme() {
-    if (document.documentElement.classList.contains('dark')) {
-        document.documentElement.classList.remove('dark');
-        localStorage.theme = 'light';
-    } else {
-        document.documentElement.classList.add('dark');
-        localStorage.theme = 'dark';
-    }
-}
-
-// =====================
-// MODAL LOGIC
-// =====================
-function toggleModal(modalId) {
-    const modal = document.getElementById(modalId);
-    const backdrop = modal.querySelector('.modal-backdrop');
-    const panel = modal.querySelector('.modal-panel');
-
-    if (modal.classList.contains('hidden')) {
-        modal.classList.remove('hidden');
-        setTimeout(() => {
-            backdrop.classList.remove('opacity-0');
-            panel.classList.remove('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
-            panel.classList.add('translate-y-0', 'sm:scale-100');
-        }, 10);
-    } else {
-        backdrop.classList.add('opacity-0');
-        panel.classList.add('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
-        panel.classList.remove('translate-y-0', 'sm:scale-100');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-        }, 300);
-    }
-}
-
-// =====================
-// EXPORT/IMPORT FUNCTIONS
-// =====================
-
-// Export menu toggle
-function toggleExportMenu() {
-    const menu = document.getElementById('exportMenu');
-    menu.classList.toggle('hidden');
-}
-
-// Close export menu when clicking outside
-document.addEventListener('click', (e) => {
-    const dropdown = document.getElementById('exportDropdown');
-    if (dropdown && !dropdown.contains(e.target)) {
-        document.getElementById('exportMenu').classList.add('hidden');
-    }
-});
-
-// Export data function
-async function exportData(type, format) {
-    try {
-        showLoading();
-        const response = await fetch(`/api/export/${type}?format=${format}`);
-
-        if (!response.ok) {
-            throw new Error('Export başarısız');
+        function confirmDelete(assetId) {
+            if (confirm('Bu varlığı silmek istediğinize emin misiniz?')) {
+                deleteAsset(assetId);
+            }
         }
 
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${type}-${new Date().toISOString().split('T')[0]}.${format}`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        async function confirmClearAll() {
+            if (confirm('⚠️ TÜM KAYITLAR SİLİNECEK!\n\nBu işlem geri alınamaz. Tüm varlıklar ve işlem geçmişi silinecektir.\n\nDevam etmek istiyor musunuz?')) {
+                try {
+                    showLoading();
+                    const response = await fetch(`${API_BASE}/clear`, { method: 'DELETE' });
+                    if (response.ok) {
+                        await fetchAssets();
+                        showToast('Tüm veriler temizlendi', 'success');
+                    } else {
+                        showToast('Veriler temizlenirken hata oluştu', 'error');
+                    }
+                } catch (error) {
+                    console.error('Temizleme hatası:', error);
+                    showToast('Sunucu bağlantı hatası', 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+        }
 
-        showToast(`${type} başarıyla export edildi (${format.toUpperCase()})`, 'success');
-        document.getElementById('exportMenu').classList.add('hidden');
-    } catch (error) {
-        showToast('Export hatası: ' + error.message, 'error');
-    } finally {
-        hideLoading();
-    }
-}
+        function openEditModal(assetId) {
+            selectedAssetId = assetId;
+            const asset = assets.find(a => a.id === assetId);
+            if (asset) {
+                document.getElementById('editAssetName').textContent = `${asset.name} (${asset.symbol})`;
+                document.getElementById('editQuantity').value = asset.quantity;
+                document.getElementById('editAvgCost').value = asset.avg_cost;
+                document.getElementById('editCurrentPrice').value = asset.current_price;
+            }
+            toggleModal('editAssetModal');
+        }
 
-// Import data function
-async function importAssets() {
-    const fileInput = document.getElementById('importFile');
-    const formatSelect = document.getElementById('importFormat');
+        async function handleEditAsset(event) {
+            event.preventDefault();
+            const form = event.target;
+            const quantity = parseFloat(form.querySelector('[name="quantity"]').value);
+            const avg_cost = parseFloat(form.querySelector('[name="avg_cost"]').value);
+            const current_price = parseFloat(form.querySelector('[name="current_price"]').value);
 
-    if (!fileInput.files[0]) {
-        showToast('Lütfen bir dosya seçin', 'error');
-        return;
-    }
+            // Validasyon
+            if (!validatePositiveNumber(quantity, 'Miktar')) return;
+            if (avg_cost < 0) {
+                showToast('Ortalama alış fiyatı negatif olamaz', 'error');
+                return;
+            }
+            if (current_price < 0) {
+                showToast('Güncel fiyat negatif olamaz', 'error');
+                return;
+            }
 
-    try {
-        showLoading();
-        const file = fileInput.files[0];
-        const format = formatSelect.value;
-        const text = await file.text();
+            if (selectedAssetId) {
+                const success = await updateAsset(selectedAssetId, {
+                    quantity,
+                    avg_cost,
+                    current_price
+                });
+                if (success) {
+                    form.reset();
+                    toggleModal('editAssetModal');
+                }
+            }
+        }
 
-        const response = await fetch('/api/import/assets', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: text, format })
+        // Form submit handlers
+        async function handleAddAsset(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+
+            const typeMap = {
+                'Kripto Para': 'crypto',
+                'Hisse Senedi': 'stock',
+                'Altın': 'gold',
+                'Döviz': 'currency'
+            };
+
+            const quantity = parseFloat(formData.get('quantity')) || 0;
+            const avgCost = parseFloat(formData.get('avg_cost')) || 0;
+
+            // Validasyon
+            if (!validatePositiveNumber(quantity, 'Miktar')) return;
+            if (!validatePositiveNumber(avgCost, 'Alış Fiyatı')) return;
+
+            const data = {
+                name: formData.get('name'),
+                symbol: formData.get('symbol'),
+                type: typeMap[formData.get('type')] || 'stock',
+                quantity: quantity,
+                avg_cost: avgCost,
+                current_price: avgCost, // Başlangıçta alış fiyatı ile aynı
+                currency: formData.get('currency') || 'TRY'
+            };
+
+            const success = await createAsset(data);
+            if (success) {
+                form.reset();
+                document.getElementById('presetAssetSelect').value = '';
+                toggleModal('addAssetModal');
+            }
+        }
+
+        async function handleBuyAsset(event) {
+            event.preventDefault();
+            const form = event.target;
+            const quantity = parseFloat(form.querySelector('[name="quantity"]').value);
+            const price = parseFloat(form.querySelector('[name="price"]').value);
+
+            if (selectedAssetId && quantity && price) {
+                const success = await buyAsset(selectedAssetId, quantity, price);
+                if (success) {
+                    form.reset();
+                    toggleModal('buyAssetModal');
+                }
+            }
+        }
+
+        async function handleSellAsset(event) {
+            event.preventDefault();
+            const form = event.target;
+            const quantity = parseFloat(form.querySelector('[name="quantity"]').value);
+            const price = parseFloat(form.querySelector('[name="price"]').value);
+
+            if (selectedAssetId && quantity && price) {
+                const success = await sellAsset(selectedAssetId, quantity, price);
+                if (success) {
+                    form.reset();
+                    toggleModal('sellAssetModal');
+                }
+            }
+        }
+
+        // =====================
+        // DARK MODE
+        // =====================
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        }
+
+        // =====================
+        // MODAL LOGIC
+        // =====================
+        function toggleModal(modalId) {
+            const modal = document.getElementById(modalId);
+            const backdrop = modal.querySelector('.modal-backdrop');
+            const panel = modal.querySelector('.modal-panel');
+
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    backdrop.classList.remove('opacity-0');
+                    panel.classList.remove('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+                    panel.classList.add('translate-y-0', 'sm:scale-100');
+                }, 10);
+            } else {
+                backdrop.classList.add('opacity-0');
+                panel.classList.add('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
+                panel.classList.remove('translate-y-0', 'sm:scale-100');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        // =====================
+        // EXPORT/IMPORT FUNCTIONS
+        // =====================
+
+        // Export menu toggle
+        function toggleExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Close export menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('exportDropdown');
+            if (dropdown && !dropdown.contains(e.target)) {
+                document.getElementById('exportMenu').classList.add('hidden');
+            }
         });
 
-        const result = await response.json();
+        // Export data function
+        async function exportData(type, format) {
+            try {
+                showLoading();
+                const response = await fetch(`/api/export/${type}?format=${format}`);
 
-        if (result.success) {
-            showToast(`✅ ${result.imported} varlık import edildi, ${result.errors} hata`, 'success');
-            toggleModal('importModal');
-            fetchAssets();
-            fileInput.value = '';
-        } else {
-            showToast('Import başarısız', 'error');
+                if (!response.ok) {
+                    throw new Error('Export başarısız');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${type}-${new Date().toISOString().split('T')[0]}.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showToast(`${type} başarıyla export edildi (${format.toUpperCase()})`, 'success');
+                document.getElementById('exportMenu').classList.add('hidden');
+            } catch (error) {
+                showToast('Export hatası: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
         }
-    } catch (error) {
-        showToast('Import hatası: ' + error.message, 'error');
-    } finally {
-        hideLoading();
-    }
-}
 
-// =====================
-// REPORTS FUNCTIONS
-// =====================
+        // Import data function
+        async function importAssets() {
+            const fileInput = document.getElementById('importFile');
+            const formatSelect = document.getElementById('importFormat');
 
-async function loadReports() {
-    try {
-        showLoading();
+            if (!fileInput.files[0]) {
+                showToast('Lütfen bir dosya seçin', 'error');
+                return;
+            }
 
-        // Load all reports in parallel
-        const [monthly, performance, distribution, risk, topPerformers] = await Promise.all([
-            fetch('/api/reports/monthly').then(r => r.json()),
-            fetch('/api/reports/performance').then(r => r.json()),
-            fetch('/api/reports/distribution').then(r => r.json()),
-            fetch('/api/reports/risk').then(r => r.json()),
-            fetch('/api/reports/top-performers?limit=5').then(r => r.json())
-        ]);
+            try {
+                showLoading();
+                const file = fileInput.files[0];
+                const format = formatSelect.value;
+                const text = await file.text();
 
-        renderMonthlyReport(monthly);
-        renderPerformanceReport(performance);
-        renderDistributionReport(distribution);
-        renderRiskAnalysis(risk);
-        renderTopPerformers(topPerformers);
-    } catch (error) {
-        showToast('Raporlar yüklenemedi: ' + error.message, 'error');
-    } finally {
-        hideLoading();
-    }
-}
+                const response = await fetch('/api/import/assets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: text, format })
+                });
 
-function renderMonthlyReport(data) {
-    const tbody = document.getElementById('monthlyReportBody');
-    if (!tbody) return;
+                const result = await response.json();
 
-    if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Henüz işlem yok</td></tr>';
-        return;
-    }
+                if (result.success) {
+                    showToast(`✅ ${result.imported} varlık import edildi, ${result.errors} hata`, 'success');
+                    toggleModal('importModal');
+                    fetchAssets();
+                    fileInput.value = '';
+                } else {
+                    showToast('Import başarısız', 'error');
+                }
+            } catch (error) {
+                showToast('Import hatası: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
 
-    tbody.innerHTML = data.map(month => `
+        // =====================
+        // REPORTS FUNCTIONS
+        // =====================
+
+        async function loadReports() {
+            try {
+                showLoading();
+
+                // Load all reports in parallel
+                const [monthly, performance, distribution, risk, topPerformers] = await Promise.all([
+                    fetch('/api/reports/monthly').then(r => r.json()),
+                    fetch('/api/reports/performance').then(r => r.json()),
+                    fetch('/api/reports/distribution').then(r => r.json()),
+                    fetch('/api/reports/risk').then(r => r.json()),
+                    fetch('/api/reports/top-performers?limit=5').then(r => r.json())
+                ]);
+
+                renderMonthlyReport(monthly);
+                renderPerformanceReport(performance);
+                renderDistributionReport(distribution);
+                renderRiskAnalysis(risk);
+                renderTopPerformers(topPerformers);
+            } catch (error) {
+                showToast('Raporlar yüklenemedi: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderMonthlyReport(data) {
+            const tbody = document.getElementById('monthlyReportBody');
+            if (!tbody) return;
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">Henüz işlem yok</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(month => `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
             <td class="p-3">${month.month}</td>
             <td class="p-3 text-right">${month.buyCount}</td>
@@ -1333,18 +1397,18 @@ function renderMonthlyReport(data) {
             </td>
         </tr>
     `).join('');
-}
+        }
 
-function renderPerformanceReport(data) {
-    const tbody = document.getElementById('performanceReportBody');
-    if (!tbody) return;
+        function renderPerformanceReport(data) {
+            const tbody = document.getElementById('performanceReportBody');
+            if (!tbody) return;
 
-    if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Henüz varlık yok</td></tr>';
-        return;
-    }
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">Henüz varlık yok</td></tr>';
+                return;
+            }
 
-    tbody.innerHTML = data.slice(0, 10).map(asset => `
+            tbody.innerHTML = data.slice(0, 10).map(asset => `
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
             <td class="p-3">${asset.name} (${asset.symbol})</td>
             <td class="p-3 text-right">${formatCurrency(asset.costBasis)}</td>
@@ -1357,18 +1421,18 @@ function renderPerformanceReport(data) {
             </td>
         </tr>
     `).join('');
-}
+        }
 
-function renderDistributionReport(data) {
-    const container = document.getElementById('distributionReport');
-    if (!container) return;
+        function renderDistributionReport(data) {
+            const container = document.getElementById('distributionReport');
+            if (!container) return;
 
-    if (data.length === 0) {
-        container.innerHTML = '<p class="text-center py-8 text-gray-500">Henüz varlık yok</p>';
-        return;
-    }
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-center py-8 text-gray-500">Henüz varlık yok</p>';
+                return;
+            }
 
-    container.innerHTML = data.map(item => `
+            container.innerHTML = data.map(item => `
         <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <div>
                 <div class="font-medium capitalize">${item.type}</div>
@@ -1380,16 +1444,16 @@ function renderDistributionReport(data) {
             </div>
         </div>
     `).join('');
-}
+        }
 
-function renderRiskAnalysis(data) {
-    const container = document.getElementById('riskAnalysis');
-    if (!container) return;
+        function renderRiskAnalysis(data) {
+            const container = document.getElementById('riskAnalysis');
+            if (!container) return;
 
-    const scoreColor = data.diversification.score >= 70 ? 'text-green-600' :
-        data.diversification.score >= 40 ? 'text-yellow-600' : 'text-red-600';
+            const scoreColor = data.diversification.score >= 70 ? 'text-green-600' :
+                data.diversification.score >= 40 ? 'text-yellow-600' : 'text-red-600';
 
-    container.innerHTML = `
+            container.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div class="text-sm text-gray-500 mb-1">Diversifikasyon Skoru</div>
@@ -1408,18 +1472,18 @@ function renderRiskAnalysis(data) {
             </div>
         </div>
     `;
-}
+        }
 
-function renderTopPerformers(data) {
-    const gainersContainer = document.getElementById('topGainers');
-    const losersContainer = document.getElementById('topLosers');
+        function renderTopPerformers(data) {
+            const gainersContainer = document.getElementById('topGainers');
+            const losersContainer = document.getElementById('topLosers');
 
-    if (!gainersContainer || !losersContainer) return;
+            if (!gainersContainer || !losersContainer) return;
 
-    if (data.topGainers.length === 0) {
-        gainersContainer.innerHTML = '<p class="text-center py-4 text-gray-500">Henüz kazanan yok</p>';
-    } else {
-        gainersContainer.innerHTML = data.topGainers.map(asset => `
+            if (data.topGainers.length === 0) {
+                gainersContainer.innerHTML = '<p class="text-center py-4 text-gray-500">Henüz kazanan yok</p>';
+            } else {
+                gainersContainer.innerHTML = data.topGainers.map(asset => `
             <div class="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <div>
                     <div class="font-medium">${asset.name}</div>
@@ -1431,12 +1495,12 @@ function renderTopPerformers(data) {
                 </div>
             </div>
         `).join('');
-    }
+            }
 
-    if (data.topLosers.length === 0) {
-        losersContainer.innerHTML = '<p class="text-center py-4 text-gray-500">Henüz kaybeden yok</p>';
-    } else {
-        losersContainer.innerHTML = data.topLosers.map(asset => `
+            if (data.topLosers.length === 0) {
+                losersContainer.innerHTML = '<p class="text-center py-4 text-gray-500">Henüz kaybeden yok</p>';
+            } else {
+                losersContainer.innerHTML = data.topLosers.map(asset => `
             <div class="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
                 <div>
                     <div class="font-medium">${asset.name}</div>
@@ -1448,112 +1512,112 @@ function renderTopPerformers(data) {
                 </div>
             </div>
         `).join('');
-    }
-}
+            }
+        }
 
-// =====================
-// CONNECTION STATUS MANAGEMENT
-// =====================
-function updateConnectionStatus(status, message) {
-    const dot = document.getElementById('connectionDot');
-    const text = document.getElementById('connectionText');
-    
-    if (!dot || !text) return;
-    
-    switch(status) {
-        case 'connected':
-            dot.className = 'w-2 h-2 rounded-full bg-green-400';
-            text.textContent = 'Canlı';
-            break;
-        case 'disconnected':
-            dot.className = 'w-2 h-2 rounded-full bg-red-400';
-            text.textContent = 'Çevrimdışı';
-            break;
-        case 'connecting':
-            dot.className = 'w-2 h-2 rounded-full bg-yellow-400 animate-pulse';
-            text.textContent = 'Bağlanıyor...';
-            break;
-        case 'error':
-            dot.className = 'w-2 h-2 rounded-full bg-orange-400 animate-pulse';
-            text.textContent = 'Hata';
-            break;
-    }
-}
+        // =====================
+        // CONNECTION STATUS MANAGEMENT
+        // =====================
+        function updateConnectionStatus(status, message) {
+            const dot = document.getElementById('connectionDot');
+            const text = document.getElementById('connectionText');
 
-// =====================
-// INIT & SOCKET.IO
-// =====================
-const socket = io();
+            if (!dot || !text) return;
 
-// Connection status
-let isConnected = false;
+            switch (status) {
+                case 'connected':
+                    dot.className = 'w-2 h-2 rounded-full bg-green-400';
+                    text.textContent = 'Canlı';
+                    break;
+                case 'disconnected':
+                    dot.className = 'w-2 h-2 rounded-full bg-red-400';
+                    text.textContent = 'Çevrimdışı';
+                    break;
+                case 'connecting':
+                    dot.className = 'w-2 h-2 rounded-full bg-yellow-400 animate-pulse';
+                    text.textContent = 'Bağlanıyor...';
+                    break;
+                case 'error':
+                    dot.className = 'w-2 h-2 rounded-full bg-orange-400 animate-pulse';
+                    text.textContent = 'Hata';
+                    break;
+            }
+        }
 
-// Connection events
-socket.on('connect', () => {
-    console.log('✅ Socket bağlandı:', socket.id);
-    isConnected = true;
-    updateConnectionStatus('connected');
-    showToast('Canlı güncellemeler aktif', 'success', 2000);
-});
+        // =====================
+        // INIT & SOCKET.IO
+        // =====================
+        const socket = io();
 
-socket.on('disconnect', (reason) => {
-    console.log('❌ Socket bağlantısı kesildi:', reason);
-    isConnected = false;
-    updateConnectionStatus('disconnected');
-    showToast('Canlı güncellemeler devre dışı', 'warning', 3000);
-});
+        // Connection status
+        let isConnected = false;
 
-socket.on('connect_error', (error) => {
-    console.error('❌ Socket bağlantı hatası:', error);
-    updateConnectionStatus('error');
-    showToast('Bağlantı hatası - Yeniden deneniyor...', 'error', 4000);
-});
+        // Connection events
+        socket.on('connect', () => {
+            console.log('✅ Socket bağlandı:', socket.id);
+            isConnected = true;
+            updateConnectionStatus('connected');
+            showToast('Canlı güncellemeler aktif', 'success', 2000);
+        });
 
-socket.on('reconnect', (attemptNumber) => {
-    console.log('🔄 Socket yeniden bağlandı, deneme:', attemptNumber);
-    isConnected = true;
-    updateConnectionStatus('connected');
-    showToast('Bağlantı yeniden kuruldu', 'success', 2000);
-});
+        socket.on('disconnect', (reason) => {
+            console.log('❌ Socket bağlantısı kesildi:', reason);
+            isConnected = false;
+            updateConnectionStatus('disconnected');
+            showToast('Canlı güncellemeler devre dışı', 'warning', 3000);
+        });
 
-// Listen for price updates
-socket.on('price_update', (data) => {
-    if (data.type === 'full_update') {
-        console.log('📡 Socket: Yeni fiyatlar alındı', data.timestamp);
+        socket.on('connect_error', (error) => {
+            console.error('❌ Socket bağlantı hatası:', error);
+            updateConnectionStatus('error');
+            showToast('Bağlantı hatası - Yeniden deneniyor...', 'error', 4000);
+        });
 
-        // Update variables
-        assets = data.assets;
+        socket.on('reconnect', (attemptNumber) => {
+            console.log('🔄 Socket yeniden bağlandı, deneme:', attemptNumber);
+            isConnected = true;
+            updateConnectionStatus('connected');
+            showToast('Bağlantı yeniden kuruldu', 'success', 2000);
+        });
 
-        // Calculate new derived values
-        totalValue = assets.reduce((sum, asset) => sum + (asset.quantity * asset.current_price), 0);
-        totalCost = assets.reduce((sum, asset) => sum + (asset.quantity * asset.avg_cost), 0);
-        totalProfitLoss = totalValue - totalCost;
+        // Listen for price updates
+        socket.on('price_update', (data) => {
+            if (data.type === 'full_update') {
+                console.log('📡 Socket: Yeni fiyatlar alındı', data.timestamp);
 
-        // Update UI
-        updateSummaryCards();
-        renderAssetsTable();
-        updateCharts();
+                // Update variables
+                assets = data.assets;
 
-        // Flash effect with connection status
-        const message = isConnected ? 'Fiyatlar canlı güncellendi' : 'Fiyatlar güncellendi';
-        showToast(message, 'success', 2000);
-    }
-});
+                // Calculate new derived values
+                totalValue = assets.reduce((sum, asset) => sum + (asset.quantity * asset.current_price), 0);
+                totalCost = assets.reduce((sum, asset) => sum + (asset.quantity * asset.avg_cost), 0);
+                totalProfitLoss = totalValue - totalCost;
 
-document.addEventListener('DOMContentLoaded', () => {
-    fetchAssets();
-});
+                // Update UI
+                updateSummaryCards();
+                renderAssetsTable();
+                updateCharts();
 
-// Export for testing
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        validatePositiveNumber,
-        formatCurrency,
-        chartColors,
-        typeColors,
-        setAssets: (a) => { assets = a; },
-        getAssets: () => assets
-    };
-}
+                // Flash effect with connection status
+                const message = isConnected ? 'Fiyatlar canlı güncellendi' : 'Fiyatlar güncellendi';
+                showToast(message, 'success', 2000);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAssets();
+        });
+
+        // Export for testing
+        if (typeof module !== 'undefined' && module.exports) {
+            module.exports = {
+                validatePositiveNumber,
+                formatCurrency,
+                chartColors,
+                typeColors,
+                setAssets: (a) => { assets = a; },
+                getAssets: () => assets
+            };
+        }
 
 

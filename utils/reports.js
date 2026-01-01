@@ -139,11 +139,17 @@ function getTransactionSummary(transactions) {
 // Portföy değer geçmişi (simüle edilmiş)
 function getPortfolioValueHistory(transactions, assets) {
     const history = [];
-    const dates = [...new Set(transactions.map(tx => tx.date.split('T')[0]))].sort();
+    // Tarih formatını güvenli hale getir (ISO veya ' ' ile ayrılmış)
+    const getDateString = (dateStr) => {
+        if (!dateStr) return '';
+        return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.split(' ')[0];
+    };
+
+    const dates = [...new Set(transactions.map(tx => getDateString(tx.date)))].sort();
 
     dates.forEach(date => {
-        const txUntilDate = transactions.filter(tx => tx.date.split('T')[0] <= date);
-        
+        const txUntilDate = transactions.filter(tx => getDateString(tx.date) <= date);
+
         // Bu tarihe kadar olan varlık durumunu hesapla
         const assetState = {};
         txUntilDate.forEach(tx => {
@@ -161,16 +167,20 @@ function getPortfolioValueHistory(transactions, assets) {
 
         // Toplam değeri hesapla
         let totalValue = 0;
+        let investedValue = 0;
+
         Object.entries(assetState).forEach(([assetId, state]) => {
             const asset = assets.find(a => a.id == assetId);
             if (asset && state.quantity > 0) {
                 totalValue += state.quantity * asset.current_price;
+                investedValue += state.totalCost; // Kümülatif maliyet (Yatırılan Ana Para)
             }
         });
 
         history.push({
             date,
-            value: totalValue
+            value: totalValue,
+            investedValue: investedValue
         });
     });
 
@@ -180,7 +190,7 @@ function getPortfolioValueHistory(transactions, assets) {
 // En iyi/en kötü performans gösteren varlıklar
 function getTopPerformers(assets, limit = 5) {
     const performance = getAssetPerformanceReport(assets);
-    
+
     return {
         topGainers: performance.filter(a => a.profitLoss > 0).slice(0, limit),
         topLosers: performance.filter(a => a.profitLoss < 0).slice(-limit).reverse()
@@ -190,7 +200,7 @@ function getTopPerformers(assets, limit = 5) {
 // Risk analizi
 function getRiskAnalysis(assets) {
     const totalValue = assets.reduce((sum, a) => sum + (a.quantity * a.current_price), 0);
-    
+
     const analysis = {
         diversification: {
             assetCount: assets.length,
@@ -209,7 +219,7 @@ function getRiskAnalysis(assets) {
 
     // Diversification score (0-100)
     analysis.diversification.score = Math.min(
-        (analysis.diversification.assetCount * 10) + 
+        (analysis.diversification.assetCount * 10) +
         (analysis.diversification.typeCount * 20),
         100
     );
@@ -219,14 +229,14 @@ function getRiskAnalysis(assets) {
         const sorted = assets
             .map(a => ({ ...a, value: a.quantity * a.current_price }))
             .sort((a, b) => b.value - a.value);
-        
-        analysis.concentration.topAssetPercentage = totalValue > 0 
-            ? (sorted[0].value / totalValue) * 100 
+
+        analysis.concentration.topAssetPercentage = totalValue > 0
+            ? (sorted[0].value / totalValue) * 100
             : 0;
-        
+
         const top3Value = sorted.slice(0, 3).reduce((sum, a) => sum + a.value, 0);
-        analysis.concentration.top3Percentage = totalValue > 0 
-            ? (top3Value / totalValue) * 100 
+        analysis.concentration.top3Percentage = totalValue > 0
+            ? (top3Value / totalValue) * 100
             : 0;
     }
 
