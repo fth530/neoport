@@ -46,23 +46,23 @@ function fromCSV(csvString) {
     for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim());
         const row = {};
-        
+
         headers.forEach((header, index) => {
             let value = values[index];
-            
+
             // Tırnak işaretlerini temizle
             if (value.startsWith('"') && value.endsWith('"')) {
                 value = value.slice(1, -1).replace(/""/g, '"');
             }
-            
+
             // Sayıya çevir
             if (!isNaN(value) && value !== '') {
                 value = parseFloat(value);
             }
-            
+
             row[header] = value;
         });
-        
+
         data.push(row);
     }
 
@@ -112,7 +112,7 @@ function exportSummary(summary, assets, transactions, format = 'json') {
 // Varlıkları import et
 function importAssets(data, format = 'json') {
     let assets;
-    
+
     if (format === 'csv') {
         assets = fromCSV(data);
     } else {
@@ -132,7 +132,7 @@ function importAssets(data, format = 'json') {
 // Tam portföy import et
 function importPortfolio(data) {
     const portfolio = JSON.parse(data);
-    
+
     if (!portfolio.assets || !portfolio.transactions) {
         throw new Error('Geçersiz portföy verisi');
     }

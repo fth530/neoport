@@ -9,6 +9,14 @@ const DB_PATH = path.join(__dirname, 'portfolio.db');
 let db = null;
 
 // Veritabanını başlat
+/**
+ * Initializes the SQLite database.
+ * Loads existing DB from file or creates a new one.
+ * Runs necessary migrations.
+ * @async
+ * @returns {Promise<Object>} The database instance
+ * @throws {Error} If initialization fails
+ */
 async function initDatabase() {
     try {
         const SQL = await initSqlJs();
@@ -18,24 +26,57 @@ async function initDatabase() {
             try {
                 const fileBuffer = fs.readFileSync(DB_PATH);
                 db = new SQL.Database(fileBuffer);
-                console.log('✅ Mevcut veritabanı yüklendi');
+                // console.log('✅ Mevcut veritabanı yüklendi');
             } catch (error) {
                 console.error('⚠️ Veritabanı dosyası bozuk, yeni oluşturuluyor:', error.message);
                 db = new SQL.Database();
             }
         } else {
             db = new SQL.Database();
-            console.log('✅ Yeni veritabanı oluşturuldu');
+            // console.log('✅ Yeni veritabanı oluşturuldu');
         }
 
         // Tabloları oluştur
         const { runMigrations } = require('./utils/migrate');
 
+        // İşlemler tablosu
+        db.run(`CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            asset_id INTEGER,
+            type TEXT CHECK(type IN ('buy', 'sell')),
+            quantity REAL,
+            price REAL,
+            date TEXT DEFAULT CURRENT_TIMESTAMP,
+            total REAL,
+            FOREIGN KEY(asset_id) REFERENCES assets(id)
+        )`);
+
+        // Fiyat Alarmları Tablosu
+        db.run(`CREATE TABLE IF NOT EXISTS price_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            asset_symbol TEXT NOT NULL,
+            alert_type TEXT CHECK(alert_type IN ('PRICE_ABOVE', 'PRICE_BELOW', 'VOLATILITY')), 
+            threshold_value REAL NOT NULL,
+            current_price REAL, 
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        // Alarm Geçmişi Tablosu
+        db.run(`CREATE TABLE IF NOT EXISTS alert_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            alert_id INTEGER,
+            triggered_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            trigger_price REAL,
+            message TEXT,
+            FOREIGN KEY(alert_id) REFERENCES price_alerts(id)
+        )`);
+
         // Tabloları migration sistemi ile oluştur
         await runMigrations(db);
 
         saveDatabase();
-        console.log('✅ Veritabanı başarıyla başlatıldı');
+        console.log('✅ Veritabanı başlatıldı');
         return db;
     } catch (error) {
         console.error('❌ Veritabanı başlatma hatası:', error);
@@ -43,6 +84,7 @@ async function initDatabase() {
     }
 }
 
+// ... saveDatabase ...
 // Veritabanını dosyaya kaydet
 function saveDatabase() {
     if (!db) {
@@ -83,6 +125,11 @@ function saveDatabaseBatch() {
 // ASSET CRUD İşlemleri
 // =====================
 
+/**
+ * Retrieves all assets with calculated profit/loss metrics.
+ * @returns {Array<Object>} List of asset objects
+ * @throws {Error} If query fails
+ */
 function getAllAssets() {
     try {
         const stmt = db.prepare(`
@@ -272,6 +319,41 @@ function sellAsset(id, quantity, price) {
         // Gerçekleşen kar/zarar hesapla: (satış fiyatı - ortalama maliyet) * miktar
         const realizedProfit = (price - asset.avg_cost) * quantity;
         const newQuantity = asset.quantity - quantity;
+
+        // İşlemler tablosu
+        db.run(`CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            asset_id INTEGER,
+            type TEXT CHECK(type IN ('buy', 'sell')),
+            quantity REAL,
+            price REAL,
+            date TEXT DEFAULT CURRENT_TIMESTAMP,
+            total REAL,
+            FOREIGN KEY(asset_id) REFERENCES assets(id)
+        )`);
+
+        // Fiyat Alarmları Tablosu
+        db.run(`CREATE TABLE IF NOT EXISTS price_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            asset_symbol TEXT NOT NULL,
+            alert_type TEXT CHECK(alert_type IN ('PRICE_ABOVE', 'PRICE_BELOW', 'VOLATILITY')), 
+            threshold_value REAL NOT NULL,
+            current_price REAL, 
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        // Alarm Geçmişi Tablosu
+        db.run(`CREATE TABLE IF NOT EXISTS alert_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            alert_id INTEGER,
+            triggered_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            trigger_price REAL,
+            message TEXT,
+            FOREIGN KEY(alert_id) REFERENCES price_alerts(id)
+        )`);
+
+        console.log('✅ Tablolar oluşturuldu/kontrol edildi');
 
         updateAsset(id, {
             quantity: newQuantity
@@ -476,6 +558,49 @@ module.exports = {
     clearAllData,
     checkDataIntegrity,
     autoFixDataIntegrity,
+
+    getAllTransactions: () => {
+        try {
+            const stmt = db.prepare("SELECT * FROM transactions ORDER BY date DESC");
+            const res = [];
+            while (stmt.step()) res.push(stmt.getAsObject());
+            stmt.free();
+            return res;
+        } catch (e) { return []; }
+    },
+
+    // Alerts
+    createAlert: (alert) => {
+        const stmt = db.prepare(`
+            INSERT INTO price_alerts (asset_symbol, alert_type, threshold_value, current_price, is_active)
+            VALUES (@symbol, @type, @threshold, @current, 1)
+        `);
+        const result = stmt.run({
+            '@symbol': alert.symbol,
+            '@type': alert.type,
+            '@threshold': alert.threshold,
+            '@current': alert.currentPrice || 0
+        });
+        return { id: result.lastInsertRowid, ...alert };
+    },
+
+    getAllAlerts: () => {
+        const stmt = db.prepare("SELECT * FROM price_alerts WHERE is_active = 1 ORDER BY created_at DESC");
+        return stmt.all();
+    },
+
+    deleteAlert: (id) => {
+        const stmt = db.prepare("UPDATE price_alerts SET is_active = 0 WHERE id = ?");
+        return stmt.run(id);
+    },
+
+    logAlertHistory: (alertId, triggerPrice, message) => {
+        const stmt = db.prepare(`
+            INSERT INTO alert_history (alert_id, trigger_price, message)
+            VALUES (?, ?, ?)
+        `);
+        stmt.run(alertId, triggerPrice, message);
+    },
     backupDatabase,
     restoreDatabase
 };

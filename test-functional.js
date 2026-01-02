@@ -56,7 +56,7 @@ async function setupTestData() {
     console.log('\n📦 Test verisi hazırlanıyor...\n');
     
     // Test varlığı ekle
-    const asset = await makeRequest('POST', '/api/assets', {
+    const asset = await makeRequest('POST', '/api/v1/assets', {
         name: 'Test Bitcoin',
         symbol: 'BTC',
         type: 'crypto',
@@ -68,12 +68,12 @@ async function setupTestData() {
     testAssetId = asset.data.id;
     
     // Birkaç işlem ekle
-    await makeRequest('POST', `/api/assets/${testAssetId}/buy`, {
+    await makeRequest('POST', `/api/v1/assets/${testAssetId}/buy`, {
         quantity: 0.3,
         price: 52000
     });
     
-    await makeRequest('POST', `/api/assets/${testAssetId}/sell`, {
+    await makeRequest('POST', `/api/v1/assets/${testAssetId}/sell`, {
         quantity: 0.1,
         price: 55000
     });
@@ -84,7 +84,7 @@ async function setupTestData() {
 // Cleanup: Test verisini temizle
 async function cleanupTestData() {
     if (testAssetId) {
-        await makeRequest('DELETE', `/api/assets/${testAssetId}`);
+        await makeRequest('DELETE', `/api/v1/assets/${testAssetId}`);
     }
 }
 
@@ -93,7 +93,7 @@ async function cleanupTestData() {
 // =====================
 
 async function testExportAssetsJSON() {
-    const res = await makeRequest('GET', '/api/export/assets?format=json');
+    const res = await makeRequest('GET', '/api/v1/export/assets?format=json');
     
     if (res.status !== 200) {
         throw new Error(`Beklenen: 200, Alınan: ${res.status}`);
@@ -116,7 +116,7 @@ async function testExportAssetsJSON() {
 }
 
 async function testExportAssetsCSV() {
-    const res = await makeRequest('GET', '/api/export/assets?format=csv');
+    const res = await makeRequest('GET', '/api/v1/export/assets?format=csv');
     
     if (res.status !== 200) {
         throw new Error(`Beklenen: 200, Alınan: ${res.status}`);
@@ -143,7 +143,7 @@ async function testExportAssetsCSV() {
 }
 
 async function testExportTransactionsJSON() {
-    const res = await makeRequest('GET', '/api/export/transactions?format=json');
+    const res = await makeRequest('GET', '/api/v1/export/transactions?format=json');
     
     if (res.status !== 200) {
         throw new Error(`Beklenen: 200, Alınan: ${res.status}`);
@@ -157,7 +157,7 @@ async function testExportTransactionsJSON() {
 }
 
 async function testExportTransactionsCSV() {
-    const res = await makeRequest('GET', '/api/export/transactions?format=csv');
+    const res = await makeRequest('GET', '/api/v1/export/transactions?format=csv');
     
     if (res.status !== 200) {
         throw new Error(`Beklenen: 200, Alınan: ${res.status}`);
@@ -169,7 +169,7 @@ async function testExportTransactionsCSV() {
 }
 
 async function testExportPortfolioJSON() {
-    const res = await makeRequest('GET', '/api/export/portfolio?format=json');
+    const res = await makeRequest('GET', '/api/v1/export/portfolio?format=json');
     
     if (res.status !== 200) {
         throw new Error(`Beklenen: 200, Alınan: ${res.status}`);
@@ -195,11 +195,11 @@ async function testImportAssetsJSON() {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Önce varsa temizle
-    const existingAssets = await makeRequest('GET', '/api/assets');
+    const existingAssets = await makeRequest('GET', '/api/v1/assets');
     const assetsList = Array.isArray(existingAssets.data) ? existingAssets.data : [];
     const existing = assetsList.find(a => a.symbol === 'GOLD-TEST');
     if (existing) {
-        await makeRequest('DELETE', `/api/assets/${existing.id}`);
+        await makeRequest('DELETE', `/api/v1/assets/${existing.id}`);
     }
     
     const importData = [
@@ -214,7 +214,7 @@ async function testImportAssetsJSON() {
         }
     ];
     
-    const res = await makeRequest('POST', '/api/import/assets', {
+    const res = await makeRequest('POST', '/api/v1/import/assets', {
         data: JSON.stringify(importData),
         format: 'json'
     });
@@ -232,11 +232,11 @@ async function testImportAssetsJSON() {
     }
     
     // Cleanup
-    const assets = await makeRequest('GET', '/api/assets');
+    const assets = await makeRequest('GET', '/api/v1/assets');
     const assetsList2 = Array.isArray(assets.data) ? assets.data : [];
     const imported = assetsList2.find(a => a.symbol === 'GOLD-TEST');
     if (imported) {
-        await makeRequest('DELETE', `/api/assets/${imported.id}`);
+        await makeRequest('DELETE', `/api/v1/assets/${imported.id}`);
     }
 }
 
@@ -245,17 +245,17 @@ async function testImportAssetsCSV() {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Önce varsa temizle
-    const existingAssets = await makeRequest('GET', '/api/assets');
+    const existingAssets = await makeRequest('GET', '/api/v1/assets');
     const assetsList = Array.isArray(existingAssets.data) ? existingAssets.data : [];
     const existing = assetsList.find(a => a.symbol === 'SILVER-TEST');
     if (existing) {
-        await makeRequest('DELETE', `/api/assets/${existing.id}`);
+        await makeRequest('DELETE', `/api/v1/assets/${existing.id}`);
     }
     
     const csvData = `name,symbol,type,quantity,avg_cost,current_price,currency
 Import Test Silver,SILVER-TEST,gold,5,500,500,TRY`;
     
-    const res = await makeRequest('POST', '/api/import/assets', {
+    const res = await makeRequest('POST', '/api/v1/import/assets', {
         data: csvData,
         format: 'csv'
     });
@@ -275,11 +275,11 @@ Import Test Silver,SILVER-TEST,gold,5,500,500,TRY`;
     }
     
     // Cleanup
-    const assets = await makeRequest('GET', '/api/assets');
+    const assets = await makeRequest('GET', '/api/v1/assets');
     const assetsList2 = Array.isArray(assets.data) ? assets.data : [];
     const imported = assetsList2.find(a => a.symbol === 'SILVER-TEST');
     if (imported) {
-        await makeRequest('DELETE', `/api/assets/${imported.id}`);
+        await makeRequest('DELETE', `/api/v1/assets/${imported.id}`);
     }
 }
 
@@ -287,7 +287,7 @@ async function testImportInvalidData() {
     // Rate limit için bekle
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const res = await makeRequest('POST', '/api/import/assets', {
+    const res = await makeRequest('POST', '/api/v1/import/assets', {
         data: JSON.stringify([{ invalid: 'data' }]),
         format: 'json'
     });
@@ -321,7 +321,7 @@ async function testImportInvalidData() {
 
 async function testMonthlyReport() {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const res = await makeRequest('GET', '/api/reports/monthly');
+    const res = await makeRequest('GET', '/api/v1/reports/monthly');
     
     if (res.status === 429) {
         console.log('   ⚠️ Rate limit - test atlandı');
@@ -346,7 +346,7 @@ async function testMonthlyReport() {
 
 async function testPerformanceReport() {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const res = await makeRequest('GET', '/api/reports/performance');
+    const res = await makeRequest('GET', '/api/v1/reports/performance');
     
     if (res.status === 429) {
         console.log('   ⚠️ Rate limit - test atlandı');
@@ -374,7 +374,7 @@ async function testPerformanceReport() {
 
 async function testDistributionReport() {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const res = await makeRequest('GET', '/api/reports/distribution');
+    const res = await makeRequest('GET', '/api/v1/reports/distribution');
     
     if (res.status === 429) {
         console.log('   ⚠️ Rate limit - test atlandı');
@@ -404,7 +404,7 @@ async function testDistributionReport() {
 
 async function testTransactionSummary() {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const res = await makeRequest('GET', '/api/reports/transactions');
+    const res = await makeRequest('GET', '/api/v1/reports/transactions');
     
     if (res.status === 429) {
         console.log('   ⚠️ Rate limit - test atlandı');
@@ -436,7 +436,7 @@ async function testTransactionSummaryWithDateRange() {
     const startDate = '2024-01-01';
     const endDate = '2025-12-31';
     
-    const res = await makeRequest('GET', `/api/reports/transactions?startDate=${startDate}&endDate=${endDate}`);
+    const res = await makeRequest('GET', `/api/v1/reports/transactions?startDate=${startDate}&endDate=${endDate}`);
     
     if (res.status === 429) {
         console.log('   ⚠️ Rate limit - test atlandı');
@@ -454,7 +454,7 @@ async function testTransactionSummaryWithDateRange() {
 
 async function testPortfolioHistory() {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const res = await makeRequest('GET', '/api/reports/history');
+    const res = await makeRequest('GET', '/api/v1/reports/history');
     
     if (res.status === 429) {
         console.log('   ⚠️ Rate limit - test atlandı');
@@ -479,7 +479,7 @@ async function testPortfolioHistory() {
 
 async function testTopPerformers() {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const res = await makeRequest('GET', '/api/reports/top-performers?limit=3');
+    const res = await makeRequest('GET', '/api/v1/reports/top-performers?limit=3');
     
     if (res.status === 429) {
         console.log('   ⚠️ Rate limit - test atlandı');
@@ -501,7 +501,7 @@ async function testTopPerformers() {
 
 async function testRiskAnalysis() {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const res = await makeRequest('GET', '/api/reports/risk');
+    const res = await makeRequest('GET', '/api/v1/reports/risk');
     
     if (res.status === 429) {
         console.log('   ⚠️ Rate limit - test atlandı');
@@ -597,7 +597,7 @@ async function runAllTests() {
 function waitForServer(retries = 10) {
     return new Promise((resolve, reject) => {
         const attempt = () => {
-            http.get(BASE_URL + '/api/health', (res) => {
+            http.get(BASE_URL + '/api/v1/health', (res) => {
                 if (res.statusCode === 200) {
                     resolve();
                 } else if (retries > 0) {

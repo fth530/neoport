@@ -1,45 +1,53 @@
-# Stage 1: Build
-FROM node:20-alpine AS builder
+# Stage 1: Build Stage
+FROM node:18-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Install build dependencies (needed for compilation if any)
-RUN apk add --no-cache python3 make g++
-
-# Copy package files
+# Install dependencies (including devDependencies for build scripts/tests if needed)
 COPY package*.json ./
+RUN npm ci
 
-# Install dependencies (including devDeps for build if scripts need them, but here we prune later)
-RUN npm install
-
-# Copy source
+# Copy source code
 COPY . .
 
-# Stage 2: Production
-FROM node:20-alpine
+# (Optional) Run tests or build scripts here if you had a build step
+# RUN npm run build
 
-WORKDIR /usr/src/app
+# Remove devDependencies
+RUN npm prune --production
 
-# Set env
-ENV NODE_ENV=production
+# Stage 2: Production Stage
+FROM node:18-alpine
 
-# Install only production dependencies
-COPY package*.json ./
-RUN npm ci --only=production
+WORKDIR /app
 
-# Copy app source from builder (excluding what's not needed, but for simple node app copying src is fine)
-# Better: Copy only necessary files
-COPY --from=builder /usr/src/app .
+# Install PM2 globally and curl for healthchecks
+RUN npm install pm2 -g && apk add --no-cache curl
 
-# Create directory for db and logs
-RUN mkdir -p logs backups
+# Copy only necessary files from builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/middleware ./middleware
+COPY --from=builder /app/utils ./utils
+COPY --from=builder /app/server.js ./
+COPY --from=builder /app/priceService.js ./
+COPY --from=builder /app/ecosystem.config.js ./
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/scripts ./scripts
 
-# Expose port
+# Set permissions for scripts
+RUN chmod +x /app/scripts/*.sh
+
+# Create directory for SQLite database and volume mount
+RUN mkdir -p /app/data
+ENV DATABASE_PATH=/app/data/portfolio.db
+
+# Expose port (internal)
 EXPOSE 3000
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/v1/health || exit 1
+# Container Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
 
-# Start command
-CMD ["node", "server.js"]
+# Start with PM2
+CMD ["pm2-runtime", "start", "ecosystem.config.js", "--env", "production"]

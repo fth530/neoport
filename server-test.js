@@ -27,18 +27,9 @@ const chartUtils = require('./utils/charts');
 const analyticsUtils = require('./utils/analytics');
 const alertEngine = require('./utils/alertEngine');
 const portfolioMonitor = require('./utils/portfolioMonitor');
-const backupScheduler = require('./utils/backupScheduler');
-const privacyManager = require('./utils/privacyManager');
-
-// Init Scheduler
-backupScheduler.init();
 
 const app = express();
 const server = http.createServer(app);
-
-// Optimization Middleware
-const setCacheHeaders = require('./middleware/cache-headers');
-app.use(setCacheHeaders);
 
 // Socket.io Connection Logic
 // Socket.io Setup (Duplicate removed)
@@ -874,61 +865,6 @@ async function startServer() {
         }
     });
 
-    // =====================
-    // SECURITY & BACKUP API
-    // =====================
-    app.post('/api/v1/security/backup', async (req, res) => {
-        try {
-            const result = await backupScheduler.createBackup();
-            res.json({ success: true, backup: result });
-        } catch (error) {
-            res.status(500).json({ error: 'Yedekleme başarısız' });
-        }
-    });
-
-    app.get('/api/v1/security/backups', (req, res) => {
-        try {
-            const backups = backupScheduler.listBackups();
-            res.json(backups);
-        } catch (error) {
-            res.status(500).json({ error: 'Yedekler listelenemedi' });
-        }
-    });
-
-    app.post('/api/v1/security/restore', async (req, res) => {
-        try {
-            const { filename } = req.body;
-            if (!filename) return res.status(400).json({ error: 'Dosya adı gerekli' });
-
-            await backupScheduler.restoreBackup(filename);
-            res.json({ success: true, message: 'Yedek yüklendi. Lütfen sunucuyu yeniden başlatın.' });
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ error: 'Geri yükleme başarısız' });
-        }
-    });
-
-    app.get('/api/v1/privacy/export', (req, res) => {
-        try {
-            const data = privacyManager.exportUserData();
-            res.header('Content-Type', 'application/json');
-            res.attachment(`portfolio_export_${Date.now()}.json`);
-            res.send(JSON.stringify(data, null, 2));
-        } catch (error) {
-            res.status(500).json({ error: 'Veri dışa aktarılamadı' });
-        }
-    });
-
-    app.delete('/api/v1/privacy/delete', (req, res) => {
-        try {
-            // Basic implementation, maybe add password check for strictness
-            privacyManager.deleteUserData();
-            res.json({ success: true });
-        } catch (error) {
-            res.status(500).json({ error: 'Silme işlemi başarısız' });
-        }
-    });
-
     // Fiyatları güncelle (harici API'lerden)
     app.post('/api/v1/prices/refresh', priceRefreshLimiter, async (req, res) => {
         try {
@@ -976,6 +912,7 @@ async function startServer() {
     });
 
     // Server başlat
+    const PORT = 3001; // Force 3001 for testing
     server.listen(PORT, () => {
         console.log(`
 ╔════════════════════════════════════════════╗

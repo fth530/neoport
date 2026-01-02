@@ -84,7 +84,7 @@ async function runTest(name, testFn) {
 function waitForServer(retries = 10, delay = 1000) {
     return new Promise((resolve, reject) => {
         const attempt = () => {
-            http.get(BASE_URL + '/api/health', (res) => {
+            http.get(BASE_URL + '/api/v1/health', (res) => {
                 if (res.statusCode === 200) {
                     resolve();
                 } else if (retries > 0) {
