@@ -90,10 +90,19 @@ function showToast(message, type = 'info', duration = 3000) {
     toast.innerHTML = `
         <i class="fa-solid ${icons[type]} text-xl"></i>
         <span class="flex-1">${message}</span>
-        <button onclick="this.parentElement.remove()" class="opacity-70 hover:opacity-100 transition">
+        <button class="toast-close-btn opacity-70 hover:opacity-100 transition">
             <i class="fa-solid fa-xmark"></i>
         </button>
     `;
+
+    // CSP uyumlu: onclick yerine event listener
+    const closeBtn = toast.querySelector('.toast-close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            toast.classList.add('removing');
+            setTimeout(() => toast.remove(), 300);
+        });
+    }
 
     container.appendChild(toast);
     setTimeout(() => {
@@ -388,21 +397,48 @@ async function createAsset(data) {
             body: JSON.stringify(data)
         });
 
+        const responseData = await response.json();
+
         if (response.ok) {
+            // Başarılı yanıt - varlığı yeniden yükle
             await fetchAssets();
             showToast(`${data.name} başarıyla eklendi`, 'success');
             return true;
         } else {
-            const error = await response.json();
-            // Duplicate hatası için özel mesaj
-            if (response.status === 409 || (error.details && error.details.includes('zaten mevcut'))) {
-                showToast(`${data.symbol} zaten portföyünüzde mevcut!`, 'warning');
+            // Hata durumları
+            if (response.status === 409 || response.status === 400) {
+                // Duplicate veya validation hatası
+                const errorMsg = responseData.error || responseData.details || 'Varlık eklenemedi';
+                if (errorMsg.includes('zaten mevcut') || errorMsg.includes('mevcut')) {
+                    showToast(`${data.symbol} zaten portföyünüzde mevcut!`, 'warning');
+                } else {
+                    showToast(errorMsg, 'warning');
+                }
+            } else if (response.status === 500) {
+                // Sunucu hatası - varlığın eklenip eklenmediğini kontrol et
+                console.warn('500 hatası alındı, varlıklar yeniden yükleniyor...');
+                await fetchAssets();
+                // Eğer varlık eklendiyse başarı mesajı göster
+                const checkAsset = assets.find(a => a.symbol === data.symbol && a.type === data.type);
+                if (checkAsset) {
+                    showToast(`${data.name} başarıyla eklendi`, 'success');
+                    return true;
+                } else {
+                    showToast('Sunucu hatası oluştu, lütfen tekrar deneyin', 'error');
+                }
             } else {
-                showToast(error.error || error.details || 'Varlık eklenemedi', 'error');
+                showToast(responseData.error || responseData.details || 'Varlık eklenemedi', 'error');
             }
         }
     } catch (error) {
         console.error('Varlık eklenemedi:', error);
+        // Network hatası durumunda da varlıkları kontrol et
+        await fetchAssets();
+        const checkAsset = assets.find(a => a.symbol === data.symbol && a.type === data.type);
+        if (checkAsset) {
+            showToast(`${data.name} başarıyla eklendi`, 'success');
+            return true;
+        }
         showToast('Sunucu bağlantı hatası', 'error');
     } finally {
         hideLoading();
@@ -588,16 +624,32 @@ function renderPieChart() {
             plugins: { legend: { display: false } }
         }
     });
+
+    // Legend'ı manuel oluştur
+    if (legendContainer) {
+        legendContainer.innerHTML = assets.map((asset, i) => {
+            return `
+                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full" style="background-color: ${colors[i]}"></div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">${asset.name}</span>
+                    </div>
+                    <span class="text-sm font-bold text-gray-800 dark:text-gray-200">%${percentages[i]}</span>
+                </div>
+            `;
+        }).join('');
+    }
 }
 
 function renderTypeChart() {
     const ctx = document.getElementById('typeChart');
     const emptyState = document.getElementById('typeChartEmptyState');
+    const legendContainer = document.getElementById('typeLegend');
     if (!ctx) return;
-    // ... [Simplified for brevity in response, assuming types exist] ...
-    // Note: Reusing existing type logic from original file
+
     if (assets.length === 0) {
         if (emptyState) emptyState.style.display = 'flex';
+        if (legendContainer) legendContainer.innerHTML = '';
         if (typeChart) { typeChart.destroy(); typeChart = null; }
         return;
     }
@@ -617,6 +669,10 @@ function renderTypeChart() {
     const types = Object.keys(typeData);
     const values = types.map(t => typeData[t]);
     const colors = types.map(t => typeColors[t]?.color || '#64748b');
+    // Türkçe etiketler
+    const labels = types.map(t => typeColors[t]?.label || t);
+    const total = values.reduce((sum, v) => sum + v, 0);
+    const percentages = values.map(v => total > 0 ? ((v / total) * 100).toFixed(1) : 0);
 
     if (typeChart) typeChart.destroy();
 
@@ -624,7 +680,7 @@ function renderTypeChart() {
     typeChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: types,
+            labels: labels,
             datasets: [{
                 data: values,
                 backgroundColor: colors,
@@ -632,8 +688,27 @@ function renderTypeChart() {
                 borderWidth: 3
             }]
         },
-        options: { cutout: '65%', plugins: { legend: { display: false } } }
+        options: { 
+            cutout: '65%', 
+            plugins: { legend: { display: false } } 
+        }
     });
+
+    // Legend'ı manuel oluştur
+    if (legendContainer) {
+        legendContainer.innerHTML = types.map((type, i) => {
+            const typeInfo = typeColors[type] || { label: type, color: colors[i] };
+            return `
+                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full" style="background-color: ${colors[i]}"></div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">${typeInfo.label}</span>
+                    </div>
+                    <span class="text-sm font-bold text-gray-800 dark:text-gray-200">%${percentages[i]}</span>
+                </div>
+            `;
+        }).join('');
+    }
 }
 
 function formatCurrency(value, currency = 'TRY') {
@@ -686,17 +761,36 @@ function renderAssets() {
                 <td class="p-4 text-right font-semibold">${formatCurrency(asset.current_price, asset.currency)}</td>
                 <td class="p-4 text-right"><span class="${profitClass} px-3 py-1 rounded-full text-xs font-bold">${formatCurrency(Math.abs(asset.profit_loss), asset.currency)}</span></td>
                 <td class="p-4 text-center">
-                    <button onclick="openBuyModal(${asset.id})" class="text-blue-500 hover:text-blue-600 p-2"><i class="fa-solid fa-circle-plus"></i></button>
-                    <button onclick="openSellModal(${asset.id})" class="text-orange-500 hover:text-orange-600 p-2"><i class="fa-solid fa-circle-minus"></i></button>
-                    <button onclick="openEditModal(${asset.id})" class="text-emerald-500 p-2"><i class="fa-solid fa-pen-to-square"></i></button>
-                    <button onclick="confirmDelete(${asset.id})" class="text-red-500 p-2"><i class="fa-solid fa-trash-can"></i></button>
+                    <button class="asset-buy-btn text-blue-500 hover:text-blue-600 p-2" data-id="${asset.id}"><i class="fa-solid fa-circle-plus"></i></button>
+                    <button class="asset-sell-btn text-orange-500 hover:text-orange-600 p-2" data-id="${asset.id}"><i class="fa-solid fa-circle-minus"></i></button>
+                    <button class="asset-edit-btn text-emerald-500 p-2" data-id="${asset.id}"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button class="asset-delete-btn text-red-500 p-2" data-id="${asset.id}"><i class="fa-solid fa-trash-can"></i></button>
                 </td>
             </tr>
         `;
     }).join('');
 
+    // Butonlara event listener ekle
+    attachAssetButtonListeners(desktopBody);
+
     // Mobile render skipped for brevity, similar structure
     renderMobileAssets(mobileList, filteredAssets);
+}
+
+// Varlık butonlarına event listener ekle
+function attachAssetButtonListeners(container) {
+    container.querySelectorAll('.asset-buy-btn').forEach(btn => {
+        btn.addEventListener('click', () => openBuyModal(parseInt(btn.dataset.id)));
+    });
+    container.querySelectorAll('.asset-sell-btn').forEach(btn => {
+        btn.addEventListener('click', () => openSellModal(parseInt(btn.dataset.id)));
+    });
+    container.querySelectorAll('.asset-edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => openEditModal(parseInt(btn.dataset.id)));
+    });
+    container.querySelectorAll('.asset-delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => confirmDelete(parseInt(btn.dataset.id)));
+    });
 }
 
 function renderMobileAssets(container, filteredAssets) {
@@ -710,14 +804,18 @@ function renderMobileAssets(container, filteredAssets) {
                          <div><div class="font-bold">${asset.name}</div><div class="text-xs text-gray-500">${asset.quantity} ${asset.symbol}</div></div>
                     </div>
                     <div>
-                        <button onclick="openBuyModal(${asset.id})" class="text-blue-500 p-2"><i class="fa-solid fa-circle-plus"></i></button>
-                        <button onclick="openSellModal(${asset.id})" class="text-orange-500 p-2"><i class="fa-solid fa-circle-minus"></i></button>
-                        <button onclick="confirmDelete(${asset.id})" class="text-red-500 p-2"><i class="fa-solid fa-trash-can"></i></button>
+                        <button class="asset-buy-btn text-blue-500 p-2" data-id="${asset.id}"><i class="fa-solid fa-circle-plus"></i></button>
+                        <button class="asset-sell-btn text-orange-500 p-2" data-id="${asset.id}"><i class="fa-solid fa-circle-minus"></i></button>
+                        <button class="asset-edit-btn text-emerald-500 p-2" data-id="${asset.id}"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="asset-delete-btn text-red-500 p-2" data-id="${asset.id}"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 </div>
             </div>
         `;
     }).join('');
+    
+    // Mobile butonlara da event listener ekle
+    attachAssetButtonListeners(container);
 }
 
 // Global fallback for total value
@@ -727,34 +825,64 @@ async function updateSummary() {
     const summary = await fetchSummary();
     const totalValueEl = document.getElementById('totalValue');
 
+    // Eğer summary yoksa veya 0 ise, assets'ten hesapla
+    let totalValue = 0;
+    if (summary && summary.total_value > 0) {
+        totalValue = summary.total_value;
+        lastKnownTotal = totalValue;
+    } else if (assets && assets.length > 0) {
+        // Assets'ten manuel hesapla
+        totalValue = assets.reduce((sum, a) => {
+            const safePrice = (a.current_price && a.current_price > 0) ? a.current_price : (a.avg_cost || 0);
+            return sum + (a.quantity * safePrice);
+        }, 0);
+        lastKnownTotal = totalValue;
+    } else if (lastKnownTotal > 0) {
+        // Son bilinen değeri kullan
+        totalValue = lastKnownTotal;
+        if (totalValueEl) totalValueEl.style.opacity = '0.7';
+    }
+
     if (totalValueEl) {
-        if (!summary || !summary.total_value) {
-            // Fallback: If 0 or error, use last known good value
-            if (lastKnownTotal > 0) {
-                totalValueEl.textContent = formatCurrency(lastKnownTotal, 'TRY');
-                // Optional: show visual indicator of stale data
-                totalValueEl.style.opacity = '0.7';
-            }
+        if (totalValue > 0) {
+            totalValueEl.textContent = formatCurrency(totalValue, 'TRY');
+            totalValueEl.style.opacity = '1';
         } else {
-            // Valid update
-            lastKnownTotal = summary.total_value;
-            totalValueEl.textContent = formatCurrency(summary.total_value, 'TRY');
+            totalValueEl.textContent = formatCurrency(0, 'TRY');
             totalValueEl.style.opacity = '1';
         }
     }
 
     // TOPLAM KÂR HESAPLAMA VE YAZDIRMA
-    const totalValue = summary?.total_value || lastKnownTotal || 0;
     const totalCost = assets.reduce((sum, a) => sum + (a.quantity * (a.avg_cost || 0)), 0);
     const totalProfit = totalValue - totalCost;
     const profitEl = document.getElementById('totalProfit');
+    const profitPercentEl = document.getElementById('totalProfitPercent');
+    const realizedProfitEl = document.getElementById('realizedProfit');
+    const totalOverallProfitEl = document.getElementById('totalOverallProfit');
 
     if (profitEl) {
         profitEl.textContent = formatCurrency(totalProfit, 'TRY');
-        // Kâr ise Yeşil, Zarar ise Kırmızı yap
-        profitEl.className = `text-2xl font-bold ${totalProfit >= 0 ? 'text-green-500' : 'text-red-500'}`;
+        profitEl.className = `text-2xl font-bold ${totalProfit >= 0 ? 'text-green-300' : 'text-red-300'} flex items-center gap-2`;
     }
-    // ... complete summary update ...
+
+    if (profitPercentEl && totalCost > 0) {
+        const percent = ((totalProfit / totalCost) * 100).toFixed(1);
+        profitPercentEl.textContent = `%${percent}`;
+    }
+
+    // Gerçekleşmiş kar (summary'den al veya 0 göster)
+    if (realizedProfitEl) {
+        const realizedProfit = summary?.total_realized_profit || 0;
+        realizedProfitEl.textContent = formatCurrency(realizedProfit, 'TRY');
+    }
+
+    // Toplam kar (gerçekleşmiş + gerçekleşmemiş)
+    if (totalOverallProfitEl) {
+        const realizedProfit = summary?.total_realized_profit || 0;
+        const overallProfit = realizedProfit + totalProfit;
+        totalOverallProfitEl.textContent = formatCurrency(overallProfit, 'TRY');
+    }
 }
 
 // =====================

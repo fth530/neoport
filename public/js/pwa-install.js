@@ -39,10 +39,16 @@ function showInstallButton() {
             </div>
         </div>
         <div class="flex gap-2">
-            <button onclick="dismissInstall()" class="p-2 hover:bg-white/10 rounded-lg text-sm">Hayır</button>
-            <button onclick="triggerInstall()" class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-bold text-sm shadow-sm">Yükle</button>
+            <button class="pwa-dismiss-btn p-2 hover:bg-white/10 rounded-lg text-sm">Hayır</button>
+            <button class="pwa-install-btn bg-white text-indigo-600 px-4 py-2 rounded-lg font-bold text-sm shadow-sm">Yükle</button>
         </div>
     `;
+
+    // CSP uyumlu: onclick yerine event listener
+    const dismissBtn = container.querySelector('.pwa-dismiss-btn');
+    const installBtn = container.querySelector('.pwa-install-btn');
+    if (dismissBtn) dismissBtn.addEventListener('click', dismissInstall);
+    if (installBtn) installBtn.addEventListener('click', triggerInstall);
 
     document.body.appendChild(container);
 
@@ -94,7 +100,7 @@ function showIosInstallPrompt() {
                     <i class="fa-brands fa-apple text-xl"></i>
                     Ana Ekrana Ekle
                 </div>
-                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+                <button class="ios-toast-close-btn text-gray-400"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <p class="text-sm opacity-80">Bu uygulamayı yüklemek için:</p>
             <div class="flex items-center gap-2 text-sm bg-gray-100 dark:bg-gray-700 p-2 rounded-lg">
@@ -105,6 +111,12 @@ function showIosInstallPrompt() {
             </div>
         </div>
     `;
+
+    // CSP uyumlu: onclick yerine event listener
+    const closeBtn = toast.querySelector('.ios-toast-close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => toast.remove());
+    }
 
     document.body.appendChild(toast);
     localStorage.setItem('iosInstallShown', now.toString());

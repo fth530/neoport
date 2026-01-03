@@ -107,14 +107,6 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'UP', timestamp: new Date() });
 });
 
-// Middleware
-app.use(cors());
-app.use(express.json({ limit: '10kb' }));
-app.use(compression());
-app.use(sanitizeAll);
-app.use(responseTime);
-app.use(trackMetrics);
-
 // CORS Configuration
 const corsOptions = {
     origin: NODE_ENV === 'production'
@@ -126,6 +118,16 @@ const corsOptions = {
     maxAge: 86400 // 24 hours
 };
 app.use(cors(corsOptions));
+
+// Middleware
+app.use(express.json({ limit: '1mb', strict: true }));
+app.use(express.urlencoded({
+    extended: true,
+    limit: '1mb'
+}));
+app.use(sanitizeAll);
+app.use(responseTime);
+app.use(trackMetrics);
 
 // Socket.io Setup
 const io = new Server(server, {
@@ -195,18 +197,7 @@ const priceRefreshLimiter = rateLimit({
     }
 });
 
-// Body parser with size limit
-app.use(express.json({
-    limit: '1mb',
-    strict: true
-}));
-
-app.use(express.urlencoded({
-    extended: true,
-    limit: '1mb'
-}));
-
-// Input sanitization
+// Input sanitization (already applied above, but keep for API routes specifically)
 app.use('/api/v1/', sanitizeAll);
 
 // Serve static files
@@ -226,12 +217,6 @@ app.use((req, res, next) => {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     next();
 });
-
-// Not found handler (must be after all routes)
-// app.use(notFoundHandler);
-
-// Global error handler (must be last)
-app.use(errorHandler);
 
 let db;
 
@@ -1019,6 +1004,12 @@ async function startServer() {
     app.get('/', (req, res) => {
         res.sendFile(path.join(__dirname, 'index.html'));
     });
+
+    // Not found handler (must be after all routes)
+    app.use(notFoundHandler);
+
+    // Global error handler (must be last)
+    app.use(errorHandler);
 
     // Server başlat
     server.listen(PORT, () => {

@@ -36,43 +36,8 @@ async function initDatabase() {
             // console.log('✅ Yeni veritabanı oluşturuldu');
         }
 
-        // Tabloları oluştur
-        const { runMigrations } = require('./utils/migrate');
-
-        // İşlemler tablosu
-        db.run(`CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            asset_id INTEGER,
-            type TEXT CHECK(type IN ('buy', 'sell')),
-            quantity REAL,
-            price REAL,
-            date TEXT DEFAULT CURRENT_TIMESTAMP,
-            total REAL,
-            FOREIGN KEY(asset_id) REFERENCES assets(id)
-        )`);
-
-        // Fiyat Alarmları Tablosu
-        db.run(`CREATE TABLE IF NOT EXISTS price_alerts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            asset_symbol TEXT NOT NULL,
-            alert_type TEXT CHECK(alert_type IN ('PRICE_ABOVE', 'PRICE_BELOW', 'VOLATILITY')), 
-            threshold_value REAL NOT NULL,
-            current_price REAL, 
-            is_active INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )`);
-
-        // Alarm Geçmişi Tablosu
-        db.run(`CREATE TABLE IF NOT EXISTS alert_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            alert_id INTEGER,
-            triggered_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            trigger_price REAL,
-            message TEXT,
-            FOREIGN KEY(alert_id) REFERENCES price_alerts(id)
-        )`);
-
         // Tabloları migration sistemi ile oluştur
+        const { runMigrations } = require('./utils/migrate');
         await runMigrations(db);
 
         saveDatabase();
@@ -320,41 +285,6 @@ function sellAsset(id, quantity, price) {
         const realizedProfit = (price - asset.avg_cost) * quantity;
         const newQuantity = asset.quantity - quantity;
 
-        // İşlemler tablosu
-        db.run(`CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            asset_id INTEGER,
-            type TEXT CHECK(type IN ('buy', 'sell')),
-            quantity REAL,
-            price REAL,
-            date TEXT DEFAULT CURRENT_TIMESTAMP,
-            total REAL,
-            FOREIGN KEY(asset_id) REFERENCES assets(id)
-        )`);
-
-        // Fiyat Alarmları Tablosu
-        db.run(`CREATE TABLE IF NOT EXISTS price_alerts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            asset_symbol TEXT NOT NULL,
-            alert_type TEXT CHECK(alert_type IN ('PRICE_ABOVE', 'PRICE_BELOW', 'VOLATILITY')), 
-            threshold_value REAL NOT NULL,
-            current_price REAL, 
-            is_active INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )`);
-
-        // Alarm Geçmişi Tablosu
-        db.run(`CREATE TABLE IF NOT EXISTS alert_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            alert_id INTEGER,
-            triggered_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            trigger_price REAL,
-            message TEXT,
-            FOREIGN KEY(alert_id) REFERENCES price_alerts(id)
-        )`);
-
-        console.log('✅ Tablolar oluşturuldu/kontrol edildi');
-
         updateAsset(id, {
             quantity: newQuantity
         });
@@ -527,7 +457,7 @@ function backupDatabase(backupPath) {
 }
 
 // Veritabanı restore
-function restoreDatabase(backupPath) {
+async function restoreDatabase(backupPath) {
     try {
         if (!fs.existsSync(backupPath)) {
             throw new Error('Backup dosyası bulunamadı');
@@ -538,8 +468,12 @@ function restoreDatabase(backupPath) {
 
         // Veritabanını yeniden yükle
         const fileBuffer = fs.readFileSync(DB_PATH);
-        const SQL = require('sql.js');
+        const SQL = await initSqlJs();
         db = new SQL.Database(fileBuffer);
+
+        // Migration'ları tekrar çalıştır (gerekirse)
+        const { runMigrations } = require('./utils/migrate');
+        await runMigrations(db);
 
         return { success: true };
     } catch (error) {
@@ -564,16 +498,6 @@ module.exports = {
     clearAllData,
     checkDataIntegrity,
     autoFixDataIntegrity,
-
-    getAllTransactions: () => {
-        try {
-            const stmt = db.prepare("SELECT * FROM transactions ORDER BY date DESC");
-            const res = [];
-            while (stmt.step()) res.push(stmt.getAsObject());
-            stmt.free();
-            return res;
-        } catch (e) { return []; }
-    },
 
     // Alerts
     createAlert: (alert) => {

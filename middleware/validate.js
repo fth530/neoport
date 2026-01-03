@@ -54,7 +54,6 @@ const validateCreateAsset = [
 
     body('avg_cost')
         .optional()
-        .optional()
         .toFloat()
         .isFloat({ min: 0 }).withMessage('Fiyat negatif olamaz')
         .custom((value) => {
@@ -78,18 +77,15 @@ const validateUpdateAsset = [
 
     body('quantity')
         .optional()
-        .optional()
         .toFloat()
         .isFloat({ min: 0 }).withMessage('Miktar negatif olamaz'),
 
     body('avg_cost')
         .optional()
-        .optional()
         .toFloat()
         .isFloat({ min: 0 }).withMessage('Ortalama maliyet negatif olamaz'),
 
     body('current_price')
-        .optional()
         .optional()
         .toFloat()
         .isFloat({ min: 0 }).withMessage('Güncel fiyat negatif olamaz'),
@@ -104,12 +100,10 @@ const validateTransaction = [
 
     body('quantity')
         .notEmpty().withMessage('Miktar zorunludur')
-        .notEmpty().withMessage('Miktar zorunludur')
         .toFloat()
         .isFloat({ min: 0.00000001, max: 1000000000 }).withMessage('Miktar 0 ile 1 milyar arasında olmalıdır'),
 
     body('price')
-        .notEmpty().withMessage('Fiyat zorunludur')
         .notEmpty().withMessage('Fiyat zorunludur')
         .toFloat()
         .isFloat({ min: 0, max: 1000000000 }).withMessage('Fiyat 0 ile 1 milyar arasında olmalıdır'),

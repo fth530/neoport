@@ -13,7 +13,16 @@ const ASSETS_TO_CACHE = [
 ];
 
 // 1. Import IDB Helper
-importScripts('/public/js/idb-helper.js');
+try {
+    importScripts('/public/js/idb-helper.js');
+} catch (error) {
+    console.warn('⚠️ SW: idb-helper.js yüklenemedi, bazı özellikler çalışmayabilir:', error);
+    // Fallback: idbHelper'ı boş bir obje olarak tanımla
+    self.idbHelper = {
+        getAllTransactions: () => Promise.resolve([]),
+        deleteTransaction: () => Promise.resolve()
+    };
+}
 
 // 2. Install Event
 self.addEventListener('install', (event) => {
@@ -57,7 +66,12 @@ self.addEventListener('sync', (event) => {
 
 async function syncTransactions() {
     try {
-        const transactions = await idbHelper.getAllTransactions();
+        // idbHelper kontrolü
+        if (!self.idbHelper || typeof self.idbHelper.getAllTransactions !== 'function') {
+            console.warn('⚠️ SW: idbHelper mevcut değil, sync atlanıyor');
+            return;
+        }
+        const transactions = await self.idbHelper.getAllTransactions();
         for (const tx of transactions) {
             try {
                 // Send to API
@@ -67,7 +81,9 @@ async function syncTransactions() {
                     body: JSON.stringify(tx)
                 });
                 // Delete from IDB on success
-                await idbHelper.deleteTransaction(tx.id);
+                if (self.idbHelper && typeof self.idbHelper.deleteTransaction === 'function') {
+                    await self.idbHelper.deleteTransaction(tx.id);
+                }
             } catch (err) {
                 console.error('❌ Sync failed for tx:', tx.id, err);
             }

@@ -143,11 +143,19 @@ function updateAlertsDropdown(alerts) {
                         <span class="font-medium text-sm">${alert.symbol}</span>
                         <span class="text-xs text-gray-500 ml-2">${alert.type === 'PRICE_ABOVE' ? '↑' : '↓'} ${alert.threshold}</span>
                     </div>
-                    <button onclick="deleteAlert(${alert.id})" class="text-red-500 hover:text-red-600 text-xs">
+                    <button class="alert-delete-btn text-red-500 hover:text-red-600 text-xs" data-alert-id="${alert.id}">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
             `).join('');
+
+            // CSP uyumlu: onclick yerine event listener
+            activeAlertsList.querySelectorAll('.alert-delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const alertId = parseInt(btn.getAttribute('data-alert-id'));
+                    if (alertId) deleteAlert(alertId);
+                });
+            });
         }
     }
 }
