@@ -11,24 +11,8 @@
     <meta name="theme-color" content="#111827">
     <link rel="apple-touch-icon" href="/public/icons/icon-192.svg">
 
-    <!-- Tailwind CSS ve Dark Mode Ayarı -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        dark: {
-                            bg: '#111827',
-                            card: '#1f2937',
-                            border: '#374151'
-                        }
-                    }
-                }
-            }
-        };
-    </script>
+    <!-- TailwindCSS (Production Build) -->
+    <link rel="stylesheet" href="/public/css/styles.css">
 
     <!-- Google Fonts: Inter & Poppins -->
     <link
@@ -42,222 +26,13 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <script src="/socket.io/socket.io.js"></script>
+
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-
-        h1,
-        h2,
-        h3,
-        .brand-font {
-            font-family: 'Poppins', sans-serif;
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-
-        html.dark ::-webkit-scrollbar-track {
-            background: #111827;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-
-        html.dark ::-webkit-scrollbar-thumb {
-            background: #4b5563;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-        }
-
-        /* Mobile Polish */
+        /* Mobile Polish (component-specific) */
         button,
         input,
         select {
             min-height: 44px;
-            /* Touch target size */
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
-            opacity: 0;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* IOS PWA Install Toast Animation */
-        .animate-bounce-in {
-            animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-
-        @keyframes bounceIn {
-            0% {
-                transform: translateY(100%);
-            }
-
-            100% {
-                transform: translateY(0);
-            }
-        }
-
-        /* Skeleton Shimmer */
-        .skeleton {
-            background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-        }
-
-        .dark .skeleton {
-            background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
-        }
-
-        @keyframes shimmer {
-            0% {
-                background-position: 200% 0;
-            }
-
-            100% {
-                background-position: -200% 0;
-            }
-        }
-
-        /* Toast Notification Styles */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
-        }
-
-        .toast {
-            pointer-events: auto;
-            min-width: 300px;
-            padding: 16px 20px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: slideIn 0.3s ease-out;
-            backdrop-filter: blur(10px);
-        }
-
-        .toast.success {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-
-        .toast.error {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-        }
-
-        .toast.warning {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-        }
-
-        .toast.info {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes slideOut {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-
-            to {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-        }
-
-        .toast.removing {
-            animation: slideOut 0.3s ease-in forwards;
-        }
-
-        /* Loading Spinner */
-        .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Loading Overlay */
-        .loading-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9998;
-        }
-
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
         }
     </style>
 </head>
@@ -621,7 +396,8 @@
     <!-- ADD ASSET MODAL -->
     <div id="addAssetModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
         aria-modal="true">
-        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop modal-close-backdrop" data-modal="addAssetModal"></div>
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop modal-close-backdrop"
+            data-modal="addAssetModal"></div>
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
             <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
                 <div
@@ -631,7 +407,9 @@
                             class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 flex justify-between items-center border-b border-gray-100 dark:border-gray-700">
                             <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Yeni Varlık Ekle
                             </h3>
-                            <button type="button" class="modal-close-btn text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition" data-modal="addAssetModal">
+                            <button type="button"
+                                class="modal-close-btn text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition"
+                                data-modal="addAssetModal">
                                 <i class="fa-solid fa-xmark text-xl"></i>
                             </button>
                         </div>
@@ -765,7 +543,8 @@
     <!-- SELL ASSET MODAL -->
     <div id="sellAssetModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
         aria-modal="true">
-        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop modal-close-backdrop" data-modal="sellAssetModal"></div>
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop modal-close-backdrop"
+            data-modal="sellAssetModal"></div>
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
             <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
                 <div
@@ -778,7 +557,9 @@
                                     Varlık Satışı</h3>
                                 <p id="sellAssetName" class="text-sm text-orange-600 dark:text-orange-300"></p>
                             </div>
-                            <button type="button" class="modal-close-btn text-orange-400 hover:text-orange-500 transition" data-modal="sellAssetModal">
+                            <button type="button"
+                                class="modal-close-btn text-orange-400 hover:text-orange-500 transition"
+                                data-modal="sellAssetModal">
                                 <i class="fa-solid fa-xmark text-xl"></i>
                             </button>
                         </div>
@@ -818,7 +599,8 @@
     <!-- BUY ASSET MODAL (Mevcut varlığa alım ekleme) -->
     <div id="buyAssetModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
         aria-modal="true">
-        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop modal-close-backdrop" data-modal="buyAssetModal"></div>
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop modal-close-backdrop"
+            data-modal="buyAssetModal"></div>
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
             <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
                 <div
@@ -831,7 +613,8 @@
                                 </h3>
                                 <p id="buyAssetName" class="text-sm text-blue-600 dark:text-blue-300"></p>
                             </div>
-                            <button type="button" class="modal-close-btn text-blue-400 hover:text-blue-500 transition" data-modal="buyAssetModal">
+                            <button type="button" class="modal-close-btn text-blue-400 hover:text-blue-500 transition"
+                                data-modal="buyAssetModal">
                                 <i class="fa-solid fa-xmark text-xl"></i>
                             </button>
                         </div>
@@ -870,7 +653,8 @@
     <!-- EDIT ASSET MODAL -->
     <div id="editAssetModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
         aria-modal="true">
-        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop modal-close-backdrop" data-modal="editAssetModal"></div>
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop modal-close-backdrop"
+            data-modal="editAssetModal"></div>
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
             <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
                 <div
@@ -884,7 +668,9 @@
                                 </h3>
                                 <p id="editAssetName" class="text-sm text-emerald-600 dark:text-emerald-300"></p>
                             </div>
-                            <button type="button" class="modal-close-btn text-emerald-400 hover:text-emerald-500 transition" data-modal="editAssetModal">
+                            <button type="button"
+                                class="modal-close-btn text-emerald-400 hover:text-emerald-500 transition"
+                                data-modal="editAssetModal">
                                 <i class="fa-solid fa-xmark text-xl"></i>
                             </button>
                         </div>
@@ -994,8 +780,7 @@
             class="bg-white text-indigo-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-gray-100 transition">
             Aç
         </button>
-        <button id="closeNotificationBannerBtn"
-            class="text-white/60 hover:text-white">
+        <button id="closeNotificationBannerBtn" class="text-white/60 hover:text-white">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
@@ -1014,8 +799,7 @@
                 </div>
             </div>
             <div class="flex gap-2">
-                <button id="closePwaUpdateBtn"
-                    class="text-gray-400 hover:text-white px-2 py-1 text-xs">
+                <button id="closePwaUpdateBtn" class="text-gray-400 hover:text-white px-2 py-1 text-xs">
                     Kapat
                 </button>
                 <button id="pwaUpdateBtn"

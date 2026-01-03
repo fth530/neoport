@@ -501,17 +501,20 @@ module.exports = {
 
     // Alerts
     createAlert: (alert) => {
-        const stmt = db.prepare(`
-            INSERT INTO price_alerts (asset_symbol, alert_type, threshold_value, current_price, is_active)
-            VALUES (@symbol, @type, @threshold, @current, 1)
-        `);
-        const result = stmt.run({
-            '@symbol': alert.symbol,
-            '@type': alert.type,
-            '@threshold': alert.threshold,
-            '@current': alert.currentPrice || 0
-        });
-        return { id: result.lastInsertRowid, ...alert };
+        try {
+            db.run(`
+                INSERT INTO price_alerts (asset_symbol, alert_type, threshold_value, current_price, is_active)
+                VALUES (?, ?, ?, ?, 1)
+            `, [alert.symbol, alert.type, alert.threshold, alert.currentPrice || 0]);
+
+            const lastId = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+            saveDatabase();
+            console.log(`✅ Alert oluşturuldu (ID: ${lastId})`);
+            return { id: lastId, ...alert };
+        } catch (error) {
+            console.error('❌ createAlert error:', error);
+            throw new Error('Alert oluşturulamadı: ' + error.message);
+        }
     },
 
     getAllAlerts: () => {
@@ -530,16 +533,27 @@ module.exports = {
     },
 
     deleteAlert: (id) => {
-        const stmt = db.prepare("UPDATE price_alerts SET is_active = 0 WHERE id = ?");
-        return stmt.run(id);
+        try {
+            db.run("UPDATE price_alerts SET is_active = 0 WHERE id = ?", [id]);
+            saveDatabase();
+            console.log(`✅ Alert deaktif edildi (ID: ${id})`);
+            return { success: true };
+        } catch (error) {
+            console.error('❌ deleteAlert error:', error);
+            throw new Error('Alert silinemedi: ' + error.message);
+        }
     },
 
     logAlertHistory: (alertId, triggerPrice, message) => {
-        const stmt = db.prepare(`
-            INSERT INTO alert_history (alert_id, trigger_price, message)
-            VALUES (?, ?, ?)
-        `);
-        stmt.run(alertId, triggerPrice, message);
+        try {
+            db.run(`
+                INSERT INTO alert_history (alert_id, trigger_price, message)
+                VALUES (?, ?, ?)
+            `, [alertId, triggerPrice, message]);
+            saveDatabase();
+        } catch (error) {
+            console.error('❌ logAlertHistory error:', error);
+        }
     },
     backupDatabase,
     restoreDatabase

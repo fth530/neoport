@@ -321,7 +321,7 @@ async function startServer() {
             res.status(201).json(asset);
         } catch (error) {
             console.error('Varlık ekleme hatası:', error);
-            
+
             // Duplicate key hatası kontrolü
             if (error.message && error.message.includes('zaten mevcut')) {
                 return res.status(409).json({
@@ -329,7 +329,7 @@ async function startServer() {
                     details: error.message
                 });
             }
-            
+
             res.status(500).json({
                 error: 'Varlık eklenemedi',
                 details: error.message
@@ -398,6 +398,20 @@ async function startServer() {
             const parsedQuantity = parseFloat(quantity);
             const parsedPrice = parseFloat(price);
 
+            // NaN kontrolü
+            if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+                return res.status(400).json({
+                    error: 'Geçersiz miktar',
+                    details: 'Miktar pozitif bir sayı olmalıdır'
+                });
+            }
+            if (isNaN(parsedPrice) || parsedPrice <= 0) {
+                return res.status(400).json({
+                    error: 'Geçersiz fiyat',
+                    details: 'Fiyat pozitif bir sayı olmalıdır'
+                });
+            }
+
             const asset = db.buyAsset(id, parsedQuantity, parsedPrice);
 
             if (!asset) {
@@ -427,6 +441,20 @@ async function startServer() {
 
             const parsedQuantity = parseFloat(quantity);
             const parsedPrice = parseFloat(price);
+
+            // NaN kontrolü
+            if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+                return res.status(400).json({
+                    error: 'Geçersiz miktar',
+                    details: 'Miktar pozitif bir sayı olmalıdır'
+                });
+            }
+            if (isNaN(parsedPrice) || parsedPrice <= 0) {
+                return res.status(400).json({
+                    error: 'Geçersiz fiyat',
+                    details: 'Fiyat pozitif bir sayı olmalıdır'
+                });
+            }
 
             const result = db.sellAsset(id, parsedQuantity, parsedPrice);
 
@@ -1062,6 +1090,16 @@ async function startServer() {
             }
         }, 60000); // 60 seconds
     }
+
+    // =====================
+    // ERROR HANDLERS - En sonda olmalı
+    // =====================
+
+    // 404 Handler - Tanımsız route'lar için
+    app.use(notFoundHandler);
+
+    // Global Error Handler - Tüm hataları yakalar
+    app.use(errorHandler);
 
     // Graceful shutdown
     process.on('SIGTERM', () => {
