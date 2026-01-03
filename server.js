@@ -50,20 +50,21 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // SECURITY MIDDLEWARE
 // =====================
 
-// Helmet - Security headers
-app.use(helmet({
-    contentSecurityPolicy: {
+// GÜVENLİK AYARLARI (Genişletilmiş İzinler)
+app.use(
+    helmet.contentSecurityPolicy({
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "https://api.coingecko.com", "https://finnhub.io", "https://open.er-api.com"]
-        }
-    },
-    crossOriginEmbedderPolicy: false
-}));
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.jsdelivr.net", "cdn.tailwindcss.com", "cdnjs.cloudflare.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "fonts.googleapis.com"],
+            connectSrc: ["'self'", "api.coingecko.com", "finnhub.io", "open.er-api.com", "cdn.jsdelivr.net", "ws://localhost:3000"],
+            imgSrc: ["'self'", "data:", "assets.coingecko.com", "images.finnhub.io", "static.finnhub.io"],
+            fontSrc: ["'self'", "cdnjs.cloudflare.com", "fonts.gstatic.com"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+        },
+    })
+);
 
 // =====================
 // SWAGGER API DOCUMENTATION
@@ -290,8 +291,26 @@ async function startServer() {
         }
     });
 
+    // Middleware: Request verilerini normalize et (Türkçe karakterler, String -> Number)
+    const normalizeRequest = (req, res, next) => {
+        if (req.body) {
+            // Tip dönüşümü (TR -> EN)
+            const typeMap = { 'Döviz': 'currency', 'Altın': 'gold', 'Hisse Senedi': 'stock', 'Kripto Para': 'crypto' };
+            if (req.body.type && typeMap[req.body.type]) {
+                req.body.type = typeMap[req.body.type];
+            }
+            // Sayısal dönüşüm
+            ['quantity', 'avg_cost', 'price', 'current_price'].forEach(f => {
+                if (req.body[f] !== undefined && req.body[f] !== '') {
+                    req.body[f] = Number(req.body[f]);
+                }
+            });
+        }
+        next();
+    };
+
     // Yeni varlık ekle
-    app.post('/api/v1/assets', validateCreateAsset, (req, res) => {
+    app.post('/api/v1/assets', normalizeRequest, validateCreateAsset, (req, res) => {
         try {
             const { name, symbol, type, quantity, avg_cost, currency, icon, icon_bg } = req.body;
 
@@ -317,6 +336,15 @@ async function startServer() {
             res.status(201).json(asset);
         } catch (error) {
             console.error('Varlık ekleme hatası:', error);
+            
+            // Duplicate key hatası kontrolü
+            if (error.message && error.message.includes('zaten mevcut')) {
+                return res.status(409).json({
+                    error: 'Bu varlık zaten mevcut',
+                    details: error.message
+                });
+            }
+            
             res.status(500).json({
                 error: 'Varlık eklenemedi',
                 details: error.message
@@ -325,7 +353,7 @@ async function startServer() {
     });
 
     // Varlık güncelle
-    app.put('/api/v1/assets/:id', validateUpdateAsset, (req, res) => {
+    app.put('/api/v1/assets/:id', normalizeRequest, validateUpdateAsset, (req, res) => {
         try {
             const id = parseInt(req.params.id);
             const asset = db.updateAsset(id, req.body);
@@ -844,9 +872,10 @@ async function startServer() {
     app.get('/api/v1/alerts', (req, res) => {
         try {
             const alerts = db.getAllAlerts();
-            res.json(alerts);
+            res.json(alerts || []);
         } catch (error) {
-            res.status(500).json({ error: 'Alarmlar getirilemedi' });
+            console.error('Alerts GET error:', error);
+            res.status(500).json({ error: 'Alarmlar getirilemedi', details: error.message });
         }
     });
 
@@ -926,6 +955,22 @@ async function startServer() {
             res.json({ success: true });
         } catch (error) {
             res.status(500).json({ error: 'Silme işlemi başarısız' });
+        }
+    });
+
+    // Güncel döviz kurlarını getir
+    app.get('/api/v1/prices/rates', async (req, res) => {
+        try {
+            const rates = await priceService.getExchangeRates();
+            res.json(rates);
+        } catch (error) {
+            console.error('Döviz kurları alınamadı:', error);
+            // Fallback değerler
+            res.json({
+                USD_TRY: '43.04',
+                EUR_TRY: '50.46',
+                GBP_TRY: '57.92'
+            });
         }
     });
 

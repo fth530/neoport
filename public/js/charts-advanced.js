@@ -125,6 +125,12 @@ function calculateSMA(data, period) {
 }
 
 function renderFinancialChart(symbol, ohlcData, smaData) {
+    // GÜVENLİK: Grafik verisi eksikse çizim yapıp hataya sebep olma.
+    if (!ohlcData || ohlcData.length === 0 || !smaData || smaData.length === 0) {
+        console.log("Grafik verisi bekleniyor (Henüz hazır değil)...");
+        return; // Fonksiyonu burada durdur
+    }
+
     const ctx = document.getElementById('advancedChart').getContext('2d');
 
     // Global or module scope chart instance check

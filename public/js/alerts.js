@@ -12,11 +12,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listen for alerts from server
     if (window.socket) {
-        window.socket.on('alert_triggered', (alerts) => {
-            alerts.forEach(alert => {
-                window.showSystemNotification(alert.message);
+        window.socket.on('alert_triggered', (alertData) => {
+            let alertsArray = alertData;
+            if (!Array.isArray(alertsArray)) alertsArray = [alertsArray]; // Handle single alert object too
+
+            alertsArray.forEach(alert => {
+                if (window.showSystemNotification) {
+                    window.showSystemNotification(alert.message);
+                }
                 // Also toast
-                showToast(alert.message, 'warning', 5000);
+                if (typeof showToast === 'function') {
+                    showToast(alert.message, 'warning', 5000);
+                }
             });
             // Refresh alert list if modal open
             fetchActiveAlerts();
@@ -77,40 +84,38 @@ window.createAlert = async () => {
     }
 };
 
-// Fetch & Render Alerts
+// YENİLENMİŞ FETCH FONKSİYONU
 async function fetchActiveAlerts() {
+    const dropdown = document.getElementById('alertsDropdown');
+
     try {
         const response = await fetch('/api/v1/alerts');
-        const alerts = await response.json();
 
-        const list = document.getElementById('activeAlertsList');
-        if (!list) return;
-
-        list.innerHTML = '';
-        if (alerts.length === 0) {
-            list.innerHTML = '<div class="text-sm text-gray-500 text-center py-2">Aktif alarm yok</div>';
+        // Yanıt başarısızsa boş dizi kullan
+        if (!response.ok) {
+            console.warn('Alarmlar çekilemedi, boş liste kullanılıyor.');
+            updateAlertsDropdown([]);
             return;
         }
 
-        alerts.forEach(alert => {
-            const div = document.createElement('div');
-            div.className = 'flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded mb-2 text-sm';
-            const condition = alert.alert_type === 'PRICE_ABOVE' ? '>' : '<';
-            div.innerHTML = `
-                <div>
-                    <span class="font-bold">${alert.asset_symbol}</span>
-                    <span class="mx-1 text-gray-500">${condition}</span>
-                    <span>${formatCurrency(alert.threshold_value)}</span>
-                </div>
-                <button onclick="deleteAlert(${alert.id})" class="text-red-500 hover:text-red-700">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-             `;
-            list.appendChild(div);
-        });
+        // BURASI KRİTİK: 'const' yerine 'let' kullanıyoruz
+        let alerts = await response.json();
 
-    } catch (e) {
-        console.error('Fetch alerts failed', e);
+        // Eğer gelen veri dizi değilse, boş diziye çevir
+        if (!Array.isArray(alerts)) {
+            console.warn('API geçerli bir liste döndürmedi.');
+            alerts = [];
+        }
+
+        // Arayüzü güncelle
+        updateAlertsDropdown(alerts);
+
+    } catch (error) {
+        console.error('Alarm verisi hatası:', error);
+        // Hata durumunda da dropdown'ı temizle ki "Yükleniyor" yazısı kalmasın
+        if (dropdown) {
+            dropdown.innerHTML = '<div class="p-4 text-center text-gray-500">Bağlantı hatası</div>';
+        }
     }
 }
 
@@ -122,3 +127,27 @@ window.deleteAlert = async (id) => {
         console.error(e);
     }
 };
+
+// Alerts dropdown güncelleme fonksiyonu
+function updateAlertsDropdown(alerts) {
+    const dropdown = document.getElementById('alertsDropdown');
+    const activeAlertsList = document.getElementById('activeAlertsList');
+    
+    if (activeAlertsList) {
+        if (!alerts || alerts.length === 0) {
+            activeAlertsList.innerHTML = '<div class="text-center text-gray-500 text-sm py-2">Aktif alarm yok</div>';
+        } else {
+            activeAlertsList.innerHTML = alerts.map(alert => `
+                <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg mb-2">
+                    <div>
+                        <span class="font-medium text-sm">${alert.symbol}</span>
+                        <span class="text-xs text-gray-500 ml-2">${alert.type === 'PRICE_ABOVE' ? '↑' : '↓'} ${alert.threshold}</span>
+                    </div>
+                    <button onclick="deleteAlert(${alert.id})" class="text-red-500 hover:text-red-600 text-xs">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+    }
+}

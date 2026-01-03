@@ -446,13 +446,19 @@ function getPortfolioSummary() {
     }
 
     // Gerçekleşmiş kâr/zarar hesapla (satış işlemlerinden)
-    const realizedStmt = db.prepare('SELECT SUM(realized_profit) as total FROM transactions WHERE type = ?');
-    realizedStmt.bind(['sell']);
     let totalRealizedProfit = 0;
-    if (realizedStmt.step()) {
-        totalRealizedProfit = realizedStmt.getAsObject().total || 0;
+    try {
+        const realizedStmt = db.prepare('SELECT SUM(realized_profit) as total FROM transactions WHERE type = ?');
+        realizedStmt.bind(['sell']);
+        if (realizedStmt.step()) {
+            totalRealizedProfit = realizedStmt.getAsObject().total || 0;
+        }
+        realizedStmt.free();
+    } catch (error) {
+        // realized_profit kolonu yoksa, 0 kullan
+        console.warn('realized_profit kolonu bulunamadı, 0 kullanılıyor');
+        totalRealizedProfit = 0;
     }
-    realizedStmt.free();
 
     // Gerçekleşmemiş kâr (aktif portföy)
     const unrealizedProfit = totalValue - totalCost;
@@ -585,8 +591,18 @@ module.exports = {
     },
 
     getAllAlerts: () => {
-        const stmt = db.prepare("SELECT * FROM price_alerts WHERE is_active = 1 ORDER BY created_at DESC");
-        return stmt.all();
+        try {
+            const stmt = db.prepare("SELECT * FROM price_alerts WHERE is_active = 1 ORDER BY created_at DESC");
+            const results = [];
+            while (stmt.step()) {
+                results.push(stmt.getAsObject());
+            }
+            stmt.free();
+            return results;
+        } catch (error) {
+            console.error('getAllAlerts error:', error);
+            return [];
+        }
     },
 
     deleteAlert: (id) => {

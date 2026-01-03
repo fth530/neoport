@@ -32,10 +32,12 @@ const CRYPTO_IDS = {
 
 // Güncel fallback değerleri (environment'tan veya default)
 const FALLBACK_RATES = {
-    USD_TRY: parseFloat(process.env.FALLBACK_USD_TRY) || 35.20,
-    EUR_TRY: parseFloat(process.env.FALLBACK_EUR_TRY) || 36.80,
-    GBP_TRY: parseFloat(process.env.FALLBACK_GBP_TRY) || 44.50,
-    GOLD_GRAM_TRY: parseFloat(process.env.FALLBACK_GOLD_GRAM_TRY) || 5950
+    USD_TRY: parseFloat(process.env.FALLBACK_USD_TRY) || 36.00,
+    EUR_TRY: parseFloat(process.env.FALLBACK_EUR_TRY) || 38.50,
+    GBP_TRY: parseFloat(process.env.FALLBACK_GBP_TRY) || 46.00,
+    GOLD_GRAM_TRY: parseFloat(process.env.FALLBACK_GOLD_GRAM_TRY) || 3000,
+    BTC_USD: 98000,
+    ETH_USD: 2800
 };
 
 /**
@@ -171,7 +173,7 @@ async function getStockPrice(symbol) {
         }
 
         const data = await response.json();
-        
+
         if (!data.c || data.c === 0) {
             console.warn('⚠️ Finnhub: Geçersiz fiyat verisi:', symbol);
             return null;
