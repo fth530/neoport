@@ -138,18 +138,104 @@ async function getExchangeRates() {
 }
 
 /**
- * Altın gram fiyatını hesapla
- * Not: Altın API'leri genellikle ücretli, fallback değer kullanıyoruz
+ * Retry wrapper - exponential backoff ile yeniden deneme
+ */
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                return response;
+            }
+
+            // Rate limit ise bekle
+            if (response.status === 429) {
+                const waitTime = Math.pow(2, attempt) * 1000;
+                console.warn(`⏳ Rate limit, ${waitTime / 1000}s bekleniyor...`);
+                await new Promise(r => setTimeout(r, waitTime));
+                continue;
+            }
+
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        } catch (error) {
+            lastError = error;
+            if (error.name === 'AbortError') {
+                console.warn(`⏱️ Timeout (deneme ${attempt}/${maxRetries})`);
+            } else {
+                console.warn(`❌ Hata (deneme ${attempt}/${maxRetries}): ${error.message}`);
+            }
+
+            if (attempt < maxRetries) {
+                const waitTime = Math.pow(2, attempt) * 500;
+                await new Promise(r => setTimeout(r, waitTime));
+            }
+        }
+    }
+
+    throw lastError;
+}
+
+/**
+ * Altın gram fiyatını çek - birden fazla kaynak dene
+ * 1. metals.live (ücretsiz)
+ * 2. GoldAPI.io (API key gerekli)
+ * 3. Fallback değer
  */
 async function getGoldPrice() {
-    // Altın için güvenilir ücretsiz API yok
-    // Manuel olarak güncellenmesi gereken fallback değer
-    console.log('Altın fiyatı: Fallback değer kullanılıyor:', FALLBACK_RATES.GOLD_GRAM_TRY, 'TL/gram');
+    // 1. metals.live API dene (ücretsiz, güvenilir)
+    try {
+        const response = await fetchWithRetry('https://api.metals.live/v1/spot/gold', {}, 2);
+        const data = await response.json();
+
+        if (data && data[0] && data[0].price) {
+            // USD/ons fiyatını TRY/gram'a çevir
+            // 1 ons = 31.1035 gram
+            const usdPerOunce = data[0].price;
+            const usdTry = FALLBACK_RATES.USD_TRY;
+            const gramPrice = (usdPerOunce / 31.1035) * usdTry;
+
+            console.log(`✅ Altın fiyatı (metals.live): ${gramPrice.toFixed(2)} TL/gram`);
+            return gramPrice;
+        }
+    } catch (error) {
+        console.warn('⚠️ metals.live başarısız:', error.message);
+    }
+
+    // 2. GoldAPI.io dene (API key varsa)
+    const goldApiKey = process.env.GOLD_API_KEY;
+    if (goldApiKey) {
+        try {
+            const response = await fetchWithRetry('https://www.goldapi.io/api/XAU/TRY', {
+                headers: { 'x-access-token': goldApiKey }
+            }, 2);
+            const data = await response.json();
+
+            if (data && data.price_gram_24k) {
+                console.log(`✅ Altın fiyatı (GoldAPI): ${data.price_gram_24k.toFixed(2)} TL/gram`);
+                return data.price_gram_24k;
+            }
+        } catch (error) {
+            console.warn('⚠️ GoldAPI başarısız:', error.message);
+        }
+    }
+
+    // 3. Fallback değer kullan
+    console.log('ℹ️ Altın fiyatı: Fallback değer kullanılıyor:', FALLBACK_RATES.GOLD_GRAM_TRY, 'TL/gram');
     return FALLBACK_RATES.GOLD_GRAM_TRY;
 }
 
 /**
- * Finnhub'dan US hisse fiyatı çek
+ * Finnhub'dan US hisse fiyatı çek (retry mekanizması ile)
  */
 async function getStockPrice(symbol) {
     if (!FINNHUB_API_KEY) {
@@ -161,17 +247,7 @@ async function getStockPrice(symbol) {
         const url = `https://finnhub.io/api/v1/quote?symbol=${symbol.toUpperCase()}&token=${FINNHUB_API_KEY}`;
         console.log('📡 Finnhub API isteği:', symbol);
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const response = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            console.error('❌ Finnhub API hatası:', response.status, response.statusText);
-            return null;
-        }
-
+        const response = await fetchWithRetry(url, {}, 3);
         const data = await response.json();
 
         if (!data.c || data.c === 0) {
@@ -182,11 +258,7 @@ async function getStockPrice(symbol) {
         console.log(`✅ ${symbol}: $${data.c}`);
         return data.c;
     } catch (error) {
-        if (error.name === 'AbortError') {
-            console.error('❌ Finnhub API timeout:', symbol);
-        } else {
-            console.error('❌ Finnhub API hatası:', symbol, error.message);
-        }
+        console.error('❌ Finnhub API hatası:', symbol, error.message);
         return null;
     }
 }
