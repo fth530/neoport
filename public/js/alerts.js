@@ -5,28 +5,52 @@ const BELL_FILLED = '<i class="fa-solid fa-bell text-yellow-500"></i>';
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
-    // Request permission on load or on first interaction
-    if (Notification.permission === 'default') {
-        // notification permission logic handled in notifications.js potentially
+    // Dropdown toggle
+    const alertsToggle = document.getElementById('alertsToggle');
+    const alertsDropdownPanel = document.getElementById('alertsDropdownPanel');
+
+    if (alertsToggle && alertsDropdownPanel) {
+        alertsToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            alertsDropdownPanel.classList.toggle('hidden');
+            fetchActiveAlerts(); // Refresh on open
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!alertsDropdownPanel.contains(e.target) && !alertsToggle.contains(e.target)) {
+                alertsDropdownPanel.classList.add('hidden');
+            }
+        });
     }
+
+    // Modal buttons
+    const closeAlertModalBtn = document.getElementById('closeAlertModalBtn');
+    const cancelAlertBtn = document.getElementById('cancelAlertBtn');
+    const createAlertBtn = document.getElementById('createAlertBtn');
+    const alertModalBackdrop = document.getElementById('alertModalBackdrop');
+
+    if (closeAlertModalBtn) closeAlertModalBtn.addEventListener('click', closeAlertModal);
+    if (cancelAlertBtn) cancelAlertBtn.addEventListener('click', closeAlertModal);
+    if (createAlertBtn) createAlertBtn.addEventListener('click', createAlert);
+    if (alertModalBackdrop) alertModalBackdrop.addEventListener('click', closeAlertModal);
 
     // Listen for alerts from server
     if (window.socket) {
         window.socket.on('alert_triggered', (alertData) => {
             let alertsArray = alertData;
-            if (!Array.isArray(alertsArray)) alertsArray = [alertsArray]; // Handle single alert object too
+            if (!Array.isArray(alertsArray)) alertsArray = [alertsArray];
 
             alertsArray.forEach(alert => {
                 if (window.showSystemNotification) {
                     window.showSystemNotification(alert.message);
                 }
-                // Also toast
                 if (typeof showToast === 'function') {
                     showToast(alert.message, 'warning', 5000);
                 }
             });
-            // Refresh alert list if modal open
             fetchActiveAlerts();
+            updateAlertsBadge();
         });
     }
 
@@ -130,9 +154,11 @@ window.deleteAlert = async (id) => {
 
 // Alerts dropdown güncelleme fonksiyonu
 function updateAlertsDropdown(alerts) {
-    const dropdown = document.getElementById('alertsDropdown');
     const activeAlertsList = document.getElementById('activeAlertsList');
-    
+
+    // Update badge
+    updateAlertsBadge(alerts ? alerts.length : 0);
+
     if (activeAlertsList) {
         if (!alerts || alerts.length === 0) {
             activeAlertsList.innerHTML = '<div class="text-center text-gray-500 text-sm py-2">Aktif alarm yok</div>';
@@ -140,10 +166,10 @@ function updateAlertsDropdown(alerts) {
             activeAlertsList.innerHTML = alerts.map(alert => `
                 <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg mb-2">
                     <div>
-                        <span class="font-medium text-sm">${alert.symbol}</span>
-                        <span class="text-xs text-gray-500 ml-2">${alert.type === 'PRICE_ABOVE' ? '↑' : '↓'} ${alert.threshold}</span>
+                        <span class="font-medium text-sm text-gray-800 dark:text-white">${alert.asset_symbol || alert.symbol}</span>
+                        <span class="text-xs text-gray-500 ml-2">${alert.alert_type === 'PRICE_ABOVE' ? '↑' : '↓'} ₺${formatNumber(alert.threshold_value || alert.threshold)}</span>
                     </div>
-                    <button class="alert-delete-btn text-red-500 hover:text-red-600 text-xs" data-alert-id="${alert.id}">
+                    <button class="alert-delete-btn text-red-500 hover:text-red-600 text-xs p-1" data-alert-id="${alert.id}">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
@@ -159,3 +185,23 @@ function updateAlertsDropdown(alerts) {
         }
     }
 }
+
+// Badge güncelleme fonksiyonu
+function updateAlertsBadge(count) {
+    const badge = document.getElementById('alertsBadge');
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+}
+
+// Sayı formatlama yardımcı fonksiyonu
+function formatNumber(num) {
+    if (typeof num !== 'number') num = parseFloat(num) || 0;
+    return num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+

@@ -69,6 +69,29 @@
                     <span id="connectionText" class="text-white/80">Bağlanıyor...</span>
                 </div>
 
+                <!-- Alerts Button with Dropdown -->
+                <div class="relative">
+                    <button id="alertsToggle"
+                        class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/10 text-white w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg active:scale-95 relative"
+                        title="Fiyat Alarmları">
+                        <i class="fa-solid fa-bell text-lg"></i>
+                        <span id="alertsBadge"
+                            class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
+                    </button>
+
+                    <!-- Alerts Dropdown -->
+                    <div id="alertsDropdownPanel"
+                        class="hidden absolute right-0 top-12 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+                        <div
+                            class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-3 flex items-center justify-between">
+                            <span class="font-semibold"><i class="fa-solid fa-bell mr-2"></i>Fiyat Alarmları</span>
+                        </div>
+                        <div id="activeAlertsList" class="max-h-64 overflow-y-auto p-3">
+                            <div class="text-center text-gray-500 text-sm py-4">Yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Dark/Light Mode Toggle Button -->
                 <button id="themeToggle"
                     class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/10 text-white w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg active:scale-95"
@@ -787,6 +810,54 @@
         </button>
     </div>
 
+    <!-- Alert Modal -->
+    <div id="alertModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="alertModalBackdrop"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <button id="closeAlertModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">
+                <i class="fa-solid fa-bell text-indigo-500 mr-2"></i>Fiyat Alarmı Kur
+            </h3>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sembol</label>
+                    <input type="text" id="alertSymbol" readonly
+                        class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Güncel Fiyat</label>
+                    <div id="alertCurrentPrice"
+                        class="px-4 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg text-lg font-semibold text-gray-800 dark:text-white">
+                        ₺ 0</div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hedef Fiyat</label>
+                    <input type="number" id="alertThreshold" step="0.01" min="0"
+                        class="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <p class="text-xs text-gray-500 mt-1">Hedef fiyat güncel fiyattan yüksekse "Üstüne Çıktığında",
+                        düşükse "Altına Düştüğünde" alarm kurulur.</p>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button id="cancelAlertBtn"
+                    class="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                    İptal
+                </button>
+                <button id="createAlertBtn"
+                    class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-medium">
+                    <i class="fa-solid fa-bell mr-2"></i>Alarm Kur
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- PWA Update Notification -->
     <div id="pwaUpdateNotification"
         class="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-gray-900 border border-gray-700 text-white rounded-xl shadow-2xl p-4 transform translate-y-full transition-transform duration-300 z-50 hidden">
@@ -821,7 +892,7 @@
     <script src="/public/js/loading-states.js"></script>
     <script src="/public/js/charts-advanced.js"></script>
     <script src="/public/js/notifications.js"></script>
-    <script src="/public/js/alerts.js"></script>
+    <script src="/public/js/alerts.js?v=1.1.0"></script>
     <script src="/public/js/realtime.js"></script>
     <script src="/public/js/pwa-install.js"></script>
     <script src="/public/js/touch-gestures.js"></script>
